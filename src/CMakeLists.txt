@@ -8,7 +8,7 @@ add_dependencies(function ${external_project_dependencies})
 
 add_executable(TensorShapeTest TensorShapeTest.cpp)
 add_executable(BufferArgTest BufferArgTest.cpp)
-#add_executable(FunctionTest FunctionTest.cpp)
+add_executable(FunctionTest FunctionTest.cpp)
 
 set(LIBS ${GLOG_LIBRARIES}
          ${GTEST_LIBRARIES}
@@ -18,5 +18,5 @@ set(LIBS ${GLOG_LIBRARIES}
 
 target_link_libraries(TensorShapeTest ${LIBS})
 target_link_libraries(BufferArgTest ${LIBS})
-#target_link_libraries(FunctionTest ${LIBS})
+target_link_libraries(FunctionTest ${LIBS})
         
