@@ -1,18 +1,22 @@
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
-cmake_minimum_required(VERSION 3.0)
 
-project(function CXX C)
-find_package(Threads REQUIRED)
+file(GLOB cpp_files . BufferArg.cpp)
+list(APPEND cpp_files Function.cpp)
 
-set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING "A path setting third party libraries download & build directories.")
+add_library(function STATIC ${cpp_files})
+add_dependencies(function ${external_project_dependencies})
 
-include(external/gflags)
-include(external/glog)
-include(external/gtest)
+add_executable(TensorShapeTest TensorShapeTest.cpp)
+add_executable(BufferArgTest BufferArgTest.cpp)
+#add_executable(FunctionTest FunctionTest.cpp)
 
-include(flags)
-include(util)
+set(LIBS ${GLOG_LIBRARIES}
+         ${GTEST_LIBRARIES}
+         ${GFLAGS_LIBRARIES}
+         ${CMAKE_THREAD_LIBS_INIT}
+         ${CMAKE_DL_LIBS})
 
-add_subdirectory(src)
+target_link_libraries(TensorShapeTest ${LIBS})
+target_link_libraries(BufferArgTest ${LIBS})
+#target_link_libraries(FunctionTest ${LIBS})
+        
