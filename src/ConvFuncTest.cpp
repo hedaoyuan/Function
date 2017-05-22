@@ -15,41 +15,51 @@ limitations under the License. */
 #include <gtest/gtest.h>
 #include <memory>
 #include "Function.h"
-// #include "FunctionTest.h"
+#include "FunctionTest.h"
 
 namespace paddle {
 
-#if 0
-TEST(CrossMapNormal, real) {
-  for (size_t numSamples : {5, 32}) {
-    for (size_t channels : {1, 5, 32}) {
-      for (size_t imgSizeH : {5, 33, 100}) {
-        for (size_t imgSizeW : {5, 32, 96}) {
-          for (size_t size : {1, 2, 3, 5, 7}) {
-            VLOG(3) << " numSamples=" << numSamples << " channels=" << channels
-                    << " imgSizeH=" << imgSizeH << " imgSizeW=" << imgSizeW
-                    << " size=" << size;
+TEST(Convolution, float) {
+  #define NUM_LAYER 5
+  size_t inputChannels[NUM_LAYER] = {3, 96, 256, 384, 384};
+  size_t inputHeight[NUM_LAYER] =   {224, 27, 13, 13, 13};
+  size_t inputWidth[NUM_LAYER] =    {224, 27, 13, 13, 13};
+  size_t outputChannels[NUM_LAYER] = {96, 256, 384, 384, 256};
 
-            // init Test object
-            FunctionCompare test("CrossMapNormal",
-                                 FuncConfig()
-                                     .set("size", size)
-                                     .set("scale", (real)1.5)
-                                     .set("pow", (real)0.5));
-            // prepare input arguments
-            TensorShape shape{numSamples, channels, imgSizeH, imgSizeW};
-            test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape));
-            test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape));
-            test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape));
-            // run Function
-            test.run();
-          }
-        }
-      }
-    }
+  size_t batchSize = 1;
+  size_t stride = 1;
+  size_t padding = 1;
+  size_t filterHeight = 3;
+  size_t filterWidth = 3;
+  for (int i = 0; i < NUM_LAYER; i++) {
+    FunctionCompare test("NaiveConvolution-CPU",
+                         "ConvolutionForward-CPU",
+                         FuncConfig()
+                             .set("padding", padding)
+                             .set("stride", stride));
+
+    size_t outputHeight = 
+        (inputHeight[i] - filterHeight + 2 *padding + stride) / stride;
+    size_t outputWidth =
+        (inputWidth[i] - filterWidth + 2 * padding + stride) /stride;
+    TensorShape shape0{batchSize,
+                       inputChannels[i],
+                       inputHeight[i],
+                       inputWidth[i]};
+    TensorShape shape1{outputChannels[i],
+                       inputChannels[i],
+                       filterHeight,
+                       filterHeight};
+    TensorShape shape2{batchSize,
+                       outputChannels[i],
+                       outputHeight,
+                       outputWidth};
+    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape0));
+    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
+    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
+    test.run();
   }
 }
-#endif
 
 typedef struct {
     int batchSize;

@@ -12,10 +12,125 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include "Function.h"
+#include "ConvFunc.h"
 #include "Gemm.h"
 
 namespace paddle {
+
+/*
+ * inputData  = [batchSize, inputChannels, inputHeight, inputWidth]
+ * filterData = [outputChannels, inputChannels, filterHeight, filterWidth]
+ * outputData = [batchSize, outputChannels, outputHeight, outputWidth]
+ * The three arguments are stored in memory in row major order.
+ */
+template <class T>
+class NaiveConvFunctor {
+public:
+  void operator()(const T* inputData,
+                  size_t batchSize,
+                  size_t inputChannels,
+                  size_t inputHeight,
+                  size_t inputWidth,
+                  const T* filterData,
+                  size_t filterHeight,
+                  size_t filterWidth,
+                  T* outputData,
+                  size_t outputChannels,
+                  size_t outputHeight,
+                  size_t outputWidth,
+                  size_t padding,
+                  size_t stride) {
+    for(size_t batch = 0; batch < batchSize; batch++) {
+      for (size_t outC = 0; outC < outputChannels; outC++) {
+        for (size_t outH = 0; outH < outputHeight; outH++) {
+          for (size_t outW = 0; outW < outputWidth; outW++) {
+            const int inStartH = (outH * stride) - padding;
+            const int inStartW = (outW * stride) - padding;
+            T outValue = (T)0;
+            for (size_t inC = 0; inC < inputChannels; inC++) {
+              for (size_t fH = 0; fH < filterHeight; fH++) {
+                for (size_t fW = 0; fW < filterWidth; fW++) {
+                  T inValue;
+                  const int inH = inStartH + fH;
+                  const int inW = inStartW + fW;
+                  if ((inH >= 0 && inH < inputHeight) &&
+                      (inW >= 0 && inW < inputWidth)) {
+                    size_t offsetInput = 
+                      batch * inputChannels * inputHeight * inputWidth
+                      + inC * inputHeight * inputWidth
+                      + inH * inputWidth
+                      + inW;
+                    inValue = inputData[offsetInput];
+                  } else {
+                    inValue = (T)0;
+                  }
+                  size_t offsetFilter =
+                    outC * inputChannels * filterHeight * filterWidth
+                    + inC * filterHeight * filterWidth
+                    + fH * filterWidth
+                    + fW;
+                  T filterValue = filterData[offsetFilter];
+                  outValue += (inValue * filterValue);
+                }
+              }
+            }
+
+            size_t offset =
+                batch * outputChannels * outputHeight * outputWidth
+                + outC * outputHeight * outputWidth
+                + outH * outputWidth
+                + outW;
+            outputData[offset] = outValue;
+          }
+        }
+      }
+    }
+  }
+};
+
+template <DeviceType Device>
+class NaiveConvFunction : public ConvFunctionBase {
+public:
+  void init(const FuncConfig& config) override {
+    ConvFunctionBase::init(config);
+  }
+
+  void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    check(inputs, outputs);
+    CHECK_EQ(outputs[0].getArgType(), ASSIGN_TO);
+
+    size_t batchSize = inputs[0].shape()[0];
+    size_t inputChannels = inputs[0].shape()[1];
+    size_t inputHeight = inputs[0].shape()[2];
+    size_t inputWidth = inputs[0].shape()[3];
+    size_t filterHeight = inputs[1].shape()[2];
+    size_t filterWidth = inputs[1].shape()[2];
+    size_t outputChannels = outputs[0].shape()[1];
+    size_t outputHeight = outputs[0].shape()[2];
+    size_t outputWidth = outputs[0].shape()[3];
+
+    float* inputData = inputs[0].data<float>();
+    float* filterData = inputs[1].data<float>();
+    float* outputData = outputs[0].data<float>();
+    NaiveConvFunctor<float> conv;
+    conv(inputData,
+         batchSize,
+         inputChannels,
+         inputHeight,
+         inputWidth,
+         filterData,
+         filterHeight,
+         filterWidth,
+         outputData,
+         outputChannels,
+         outputHeight,
+         outputWidth,
+         padding_,
+         stride_);
+  }
+};
+
+REGISTER_TYPED_FUNC(NaiveConvolution, CPU, NaiveConvFunction);
 
 /*
  * input_data = [batche_size, input_channels, input_height, input_width]
@@ -96,16 +211,10 @@ public:
  *                   width of output image.
  */
 template <DeviceType Device>
-class ConvFunctionBase : public FunctionBase {
+class GemmConvFunction : public ConvFunctionBase {
 public:
   void init(const FuncConfig& config) override {
-    // function arguments
-    stride_ = config.get<size_t>("stride");
-    padding_ = config.get<size_t>("padding");
-
-    // number of inputs and outputs
-    numInputs_ = 2;
-    numOutputs_ = 1;
+    ConvFunctionBase::init(config);
     colData = nullptr;
   }
 
@@ -168,26 +277,11 @@ public:
     }
   }
 
-  void check(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    CHECK_EQ(numInputs_, inputs.size());
-    CHECK_EQ(numOutputs_, outputs.size());
-
-    CHECK_EQ(inputs[0].shape().ndims(), (size_t)4);
-    CHECK_EQ(inputs[1].shape().ndims(), (size_t)4);
-    CHECK_EQ(outputs[0].shape().ndims(), (size_t)4);
-
-    CHECK(inputs[0].shape()[0] == outputs[0].shape()[0]);
-    CHECK(inputs[0].shape()[1] == inputs[1].shape()[1]);
-    CHECK(outputs[0].shape()[1] == inputs[1].shape()[0]);
-  }
-
 private:
-  int padding_;
-  int stride_;
   float* colData;
 };
 
 
-REGISTER_TYPED_FUNC(ConvolutionForward, CPU, ConvFunctionBase);
+REGISTER_TYPED_FUNC(ConvolutionForward, CPU, GemmConvFunction);
 
 }  // namespace paddle
