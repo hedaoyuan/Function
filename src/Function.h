@@ -18,6 +18,7 @@ limitations under the License. */
 #include <vector>
 #include "BufferArg.h"
 #include "ClassRegistrar.h"
+#include "Util.h"
 
 namespace paddle {
 
