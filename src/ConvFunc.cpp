@@ -106,6 +106,7 @@ public:
     // number of inputs and outputs
     numInputs_ = 2;
     numOutputs_ = 1;
+    colData = nullptr;
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -126,6 +127,10 @@ public:
     float* filterData = inputs[1].data<float>();
     float* outputData = outputs[0].data<float>();
     Im2ColFunctor<float> im2col;
+    if (colData == nullptr) {
+      size_t size = inputChannels * filterHeight * filterWidth * outputHeight * outputWidth;
+      colData = (float*)malloc(size * sizeof(float));
+    }
 
     for (size_t i = 0; i < batchSize; i++) {
       inputData += i * inputChannels * inputHeight * inputWidth;

@@ -19,6 +19,22 @@ limitations under the License. */
 namespace paddle {
 
 /**
+ * find the value given a key k from container c.
+ * If the key can be found, the value is stored in *value
+ * return true if the key can be found. false otherwise.
+ */
+template <class K, class V, class C>
+bool mapGet(const K& k, const C& c, V* value) {
+  auto it = c.find(k);
+  if (it != c.end()) {
+    *value = it->second;
+    return true;
+  } else {
+    return false;
+  }
+}
+
+/**
  * Initialize some creators or initFunctions for layers and data
  * providers.
  * Client codes should call this function before they refer any other

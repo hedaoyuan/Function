@@ -12,14 +12,26 @@ add_dependencies(function ${external_project_dependencies})
 add_executable(TensorShapeTest TensorShapeTest.cpp)
 add_executable(BufferArgTest BufferArgTest.cpp)
 add_executable(FunctionTest FunctionTest.cpp)
+add_executable(ConvFuncTest ConvFuncTest.cpp)
 
 set(LIBS ${GLOG_LIBRARIES}
          ${GTEST_LIBRARIES}
          ${GFLAGS_LIBRARIES}
+         ${CBLAS_LIBRARIES}
          ${CMAKE_THREAD_LIBS_INIT}
-         ${CMAKE_DL_LIBS})
+         ${CMAKE_DL_LIBS}
+         ${FUNCTION})
 
 target_link_libraries(TensorShapeTest ${LIBS})
 target_link_libraries(BufferArgTest ${LIBS})
 target_link_libraries(FunctionTest ${LIBS})
-        
+target_link_libraries(ConvFuncTest
+                      "-Wl,--whole-archive"
+                      function
+                      "-Wl,--no-whole-archive")
+target_link_libraries(ConvFuncTest
+                      "-Wl,--start-group"
+                      ${LIBS}
+                      "-Wl,--end-group")
+add_dependencies(ConvFuncTest function)
+
