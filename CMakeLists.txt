@@ -13,5 +13,7 @@ include(external/glog)
 include(external/gtest)
 
 include(flags)
+include(cblas)
+INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
 add_subdirectory(src)

@@ -2,6 +2,7 @@
 
 file(GLOB cpp_files . BufferArg.cpp)
 list(APPEND cpp_files Function.cpp)
+list(APPEND cpp_files Gemm.cpp)
 
 add_library(function STATIC ${cpp_files})
 add_dependencies(function ${external_project_dependencies})
