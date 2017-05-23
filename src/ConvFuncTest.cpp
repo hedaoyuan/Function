@@ -32,7 +32,11 @@ TEST(Convolution, float) {
   size_t filterHeight = 3;
   size_t filterWidth = 3;
   for (int i = 0; i < NUM_LAYER; i++) {
-    FunctionCompare test("NaiveConvolution-CPU",
+    LOG(INFO) << " inputChannels=" << inputChannels[i]
+              << " inputHeight=" << inputHeight[i]
+              << " inputWidth=" << inputWidth[i]
+              << " outputChannels=" << outputChannels[i];
+    Compare2CpuFunction test("NaiveConvolution-CPU",
                          "ConvolutionForward-CPU",
                          FuncConfig()
                              .set("padding", padding)

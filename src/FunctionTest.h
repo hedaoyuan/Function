@@ -52,7 +52,117 @@ public:
   }
 };
 
-typedef std::shared_ptr<CpuMemoryHandle> CpuMemHandlePtr;
+template<class T>
+class RandNorm {
+public:
+  RandNorm(T mean, T std) : mean_(mean), std_(std) {}
+  void operator()(BufferArg& arg) {
+    CHECK(arg.valueType() == DataType<T>::value);
+    size_t size = arg.shape().getElements();
+    T* data = arg.data<T>();
+    // unsigned int* seed = ThreadLocalRand::getSeed();
+    // auto rand1 = [&]() { return (1. + ::rand_r(seed)) * (1. / (1. + RAND_MAX)); };
+    auto rand1 = [&]() { return (1. + ::rand()) * (1. / (1. + RAND_MAX)); };
+    for (size_t i = 0; i < size - 1; i += 2) {
+      T r1 = rand1();
+      r1 = std::sqrt(-2 * std::log(r1));
+      T r2 = rand1();
+      data[i] = mean_ + std_ * r1 * cos(2 * M_PI * r2);
+      data[i + 1] = mean_ + std_ * r1 * sin(2 * M_PI * r2);
+    }
+    T r1 = rand1();
+    r1 = std::sqrt(-2 * std::log(r1));
+    T r2 = rand1();
+    data[size - 1] = mean_ + std_ * r1 * cos(2 * M_PI * r2);
+  }
+private:
+  T mean_;
+  T std_;
+};
+
+template<class T>
+class Uniform {
+public:
+  Uniform(T left, T right) : left_(left), right_(right) {}
+  void operator()(BufferArg& arg) {
+    CHECK(arg.valueType() == DataType<T>::value);
+    size_t size = arg.shape().getElements();
+    T* data = arg.data<T>();
+    T range = right_ - left_;
+    // unsigned int* seed = ThreadLocalRand::getSeed();
+    // auto rand1 = [&]() { return ::rand_r(seed) * (1. / (1. + RAND_MAX)); };
+    auto rand1 = [&]() { return ::rand() * (1. / (1. + RAND_MAX)); };
+    for (size_t i = 0; i < size; ++i) {
+      data[i] = rand1() * range + left_;
+    }
+  }
+private:
+  T left_;
+  T right_;
+};
+
+class CopyArgument {
+public:
+  void operator()(const BufferArg& input, BufferArg& output) {
+    CHECK_EQ(input.valueType(), output.valueType());
+    CHECK_LE(input.shape().getElements(), output.shape().getElements());
+
+    const void* src = input.data();
+    void* dest = output.data();
+    memcpy(dest, src,
+      input.shape().getElements() * sizeOfValuType(input.valueType()));
+  }
+};
+
+template <class T>
+class AssertEqual {
+public:
+  AssertEqual(T err = 0) : err_(err) {}
+
+  inline bool operator()(T a, T b) {
+    if (err_ == 0) {
+      if (a != b) {
+        return false;
+      }
+    } else {
+      if (std::fabs(a - b) > err_) {
+        if ((std::fabs(a - b) / std::fabs(a)) > (err_ / 10.0f)) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
+private:
+  T err_;
+};
+
+class CheckArgument {
+public:
+  CheckArgument() : compare_(1e-4) {}
+  void operator()(const BufferArg& arg1, const BufferArg& arg2) {
+    CHECK_EQ(arg1.valueType(), arg2.valueType());
+    CHECK(arg1.shape() == arg2.shape());
+
+    size_t size = arg1.shape().getElements();
+    // TODO:
+    const float* data1 = arg1.data<float>();
+    const float* data2 = arg2.data<float>();
+    int count = 0;
+    for (size_t i = 0; i < size; i++) {
+      float a = data1[i];
+      float b = data2[i];
+      if (!compare_(a, b)) {
+        count++;
+      }
+    }
+    EXPECT_EQ(count, 0) << "There are " << count << " different element.";
+  }
+private:
+  AssertEqual<float> compare_;
+};
 
 typedef std::shared_ptr<BufferArg> BufferArgPtr;
 
@@ -79,6 +189,8 @@ typedef std::shared_ptr<BufferArg> BufferArgPtr;
  *  // Compares CPU and GPU calculation results for consistency.
  *  test.run();
  */
+// TODO: Replace Allocator1 and Allocator2 with DeviceType
+template <class Allocator1, class Allocator2>
 class FunctionCompare {
 public:
   FunctionCompare(const std::string& name1,
@@ -97,8 +209,8 @@ public:
     size_t size =
         input.shape().getElements() * sizeOfValuType(input.valueType());
 
-    func1Memory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    func2Memory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(size));
 
     func1Inputs_.emplace_back(std::make_shared<BufferArg>(
         func1Memory_.back()->getBuf(), input.valueType(), input.shape()));
@@ -110,8 +222,8 @@ public:
   void addOutputs(const BufferArg& output) {
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
-    func1Memory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
-    func2Memory_.emplace_back(std::make_shared<CpuMemoryHandle>(size));
+    func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
+    func2Memory_.emplace_back(std::make_shared<Allocator2>(size));
 
     func1Outputs_.emplace_back(
         std::make_shared<BufferArg>(func1Memory_.back()->getBuf(),
@@ -152,52 +264,35 @@ public:
   }
 
 protected:
+  // only init cpu argument, gpu argument copy from cpu argument.
   void initInputs() {
+    // TODO: Replace it with a support for more types of Uniform functor.
+    Uniform<float> uniform(0.001, 1);
+    CopyArgument copy;
     for (size_t i = 0; i < func1Inputs_.size(); i++) {
-      initArg(*func1Inputs_[i]);
-#if 0
-      // TODO: Need a BufferCopy used to copy from one BufferArg to another.
-      CpuVector cpuVector(func1Inputs_[i]->shape().getElements(),
-                          (real*)func1Inputs_[i]->data());
-      GpuVector gpuVector(func2Inputs_[i]->shape().getElements(),
-                          (real*)func2Inputs_[i]->data());
-
-      gpuVector.copyFrom(cpuVector);
-#endif
+      uniform(*func1Inputs_[i]);
+      copy(*func1Inputs_[i], *func2Inputs_[i]);
     }
   }
 
   void compareOutputs() {
+    CheckArgument check;
     for (size_t i = 0; i < func1Outputs_.size(); i++) {
-#if 0
-      // TODO, Need a BufferCheck used to compare the two buffers.
-      auto cpu = func1Outputs_[i];
-      auto gpu = func2Outputs_[i];
-      CpuVector cpuVector(cpu->shape().getElements(), (real*)cpu->data());
-      GpuVector gpuVector(cpu->shape().getElements(), (real*)gpu->data());
-
-      autotest::TensorCheckErr(cpuVector, gpuVector);
-#endif
+      check(*func1Outputs_[i], *func2Outputs_[i]);
     }
-  }
-
-  // only init cpu argument, gpu argument copy from cpu argument.
-  void initArg(BufferArg& arg) {
-#if 0
-    CpuVector vector(arg.shape().getElements(), (real*)arg.data());
-    vector.uniform(0.001, 1);
-#endif
   }
 
 protected:
   std::shared_ptr<FunctionBase> function1_;
   std::shared_ptr<FunctionBase> function2_;
-  std::vector<CpuMemHandlePtr> func1Memory_;
-  std::vector<CpuMemHandlePtr> func2Memory_;
+  std::vector<std::shared_ptr<Allocator1>> func1Memory_;
+  std::vector<std::shared_ptr<Allocator2>> func2Memory_;
   std::vector<BufferArgPtr> func1Inputs_;
   std::vector<BufferArgPtr> func1Outputs_;
   std::vector<BufferArgPtr> func2Inputs_;
   std::vector<BufferArgPtr> func2Outputs_;
 };
+
+typedef FunctionCompare<CpuMemoryHandle, CpuMemoryHandle> Compare2CpuFunction;
 
 }  // namespace paddle
