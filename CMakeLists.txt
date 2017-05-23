@@ -11,9 +11,9 @@ set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING "A path setting thi
 include(external/gflags)
 include(external/glog)
 include(external/gtest)
+include(external/openblas)
 
 include(flags)
-include(cblas)
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
 
 add_subdirectory(src)

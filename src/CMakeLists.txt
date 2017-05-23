@@ -24,8 +24,12 @@ set(LIBS ${GLOG_LIBRARIES}
          ${FUNCTION})
 
 target_link_libraries(TensorShapeTest ${LIBS})
+add_dependencies(TensorShapeTest function)
 target_link_libraries(BufferArgTest ${LIBS})
+add_dependencies(BufferArgTest function)
 target_link_libraries(FunctionTest ${LIBS})
+add_dependencies(FunctionTest function)
+
 target_link_libraries(ConvFuncTest
                       "-Wl,--whole-archive"
                       function
