@@ -42,7 +42,7 @@ TEST(Convolution, float) {
                              .set("padding", padding)
                              .set("stride", stride));
 
-    size_t outputHeight = 
+    size_t outputHeight =
         (inputHeight[i] - filterHeight + 2 *padding + stride) / stride;
     size_t outputWidth =
         (inputWidth[i] - filterWidth + 2 * padding + stride) /stride;
@@ -65,80 +65,62 @@ TEST(Convolution, float) {
   }
 }
 
-typedef struct {
-    int batchSize;
-    int featureMaps;
-    int imageH;
-    int imageW;
-    int outputFeature;
-    int filter_size;
-    int stride;
-    int padding;
-    int outputH;
-    int outputW;
-}_conv_parameter, *conv_parameter;
-typedef std::shared_ptr<BufferArg> BufferArgPtr;
+TEST(Benchmark, float) {
+  struct Sample{
+    Sample(size_t a, size_t b, size_t c, size_t d)
+      : inputChannels(a), outputChannels(b), inputSize(c), filterSize(d) {}
+    size_t inputChannels;
+    size_t outputChannels;
+    size_t inputSize;
+    size_t filterSize;
+  };
+  for (auto s : {Sample(3, 64, 108, 3),
+                 Sample(64, 64, 54, 3),
+                 Sample(64, 128, 54, 3),
+                 Sample(128, 128, 27, 3),
+                 Sample(64, 128, 54, 1),
+                 Sample(128, 128, 27, 3),
+                 Sample(128, 256, 27, 3),
+                 Sample(256, 256, 14, 3),
+                 Sample(128, 256, 27, 1),
+                 Sample(256, 256, 14, 3),
+                 Sample(256, 512, 14, 3),
+                 Sample(512, 512, 7, 3),
+                 Sample(256, 512, 14, 1),
+                 Sample(512, 512, 7, 3)}) {
+    LOG(INFO) << " inputChannels=" << s.inputChannels
+              << " outputChannels=" << s.outputChannels
+              << " inputSize=" << s.inputSize
+              << " filterSize=" << s.filterSize;
 
-TEST(ConvolutionForward, float) {
-  // 0. create function
-  std::shared_ptr<FunctionBase> convGemm(
-    FunctionBase::funcRegistrar_.createByType("ConvolutionForward-CPU"));
-  convGemm->init(FuncConfig()
-                 .set("stride", 1)
-                 .set("padding", 1));
+    size_t batchSize = 1;
+    size_t stride = 1;
+    size_t padding = 1;
 
-  // 1. arguments
-  _conv_parameter conv_para = {batchSize      : 1,
-                        featureMaps    : 3,
-                        imageH         : 224,
-                        imageW         : 224,
-                        outputFeature  : 96,
-                        filter_size    : 11,
-                        stride         : 5,
-                        padding        : 1,
-                        outputH        : 0,
-                        outputW        : 0};
-  conv_para.outputH = ceil(
-      (float)(conv_para.imageH - conv_para.filter_size 
-              + 2*abs(conv_para.padding) + conv_para.stride) 
-      / (float)conv_para.stride);
-  conv_para.outputW = ceil(
-      (float)(conv_para.imageW - conv_para.filter_size 
-              + 2*abs(conv_para.padding) + conv_para.stride) 
-      / (float)conv_para.stride);
+    CpuFunctionBenchmark test("ConvolutionForward-CPU",
+                         FuncConfig()
+                             .set("padding", padding)
+                             .set("stride", stride));
 
-
-  BufferArgs inArgs;
-  BufferArgs outArgs;
-  // 3. input0 Input image data
-  TensorShape shape0{(size_t)conv_para.batchSize,
-                    (size_t)conv_para.featureMaps,
-                    (size_t)conv_para.imageH,
-                    (size_t)conv_para.imageW};
-  void* inputData = (void *)malloc(shape0.getElements() * sizeof(float));
-  BufferArg input0(inputData, VALUE_TYPE_FLOAT, shape0);
-  inArgs.addArg(input0);
-
-  // 4. input1 Filter data
-  TensorShape shape1{(size_t)conv_para.outputFeature,
-                    (size_t)conv_para.featureMaps,
-                    (size_t)conv_para.filter_size,
-                    (size_t)conv_para.filter_size};
-  void* filterData = (void *)malloc(shape1.getElements() * sizeof(float));
-  BufferArg input1(filterData, VALUE_TYPE_FLOAT, shape1);
-  inArgs.addArg(input1);
-
-  // 5. output0 Output image data
-  TensorShape shape2{(size_t)conv_para.batchSize,
-                    (size_t)conv_para.outputFeature,
-                    (size_t)conv_para.outputH,
-                    (size_t)conv_para.outputW};
-  void* outputData = (void *)malloc(shape2.getElements() * sizeof(float));
-  BufferArg output0(outputData, VALUE_TYPE_FLOAT, shape2, ASSIGN_TO);
-  outArgs.addArg(output0);
-
-  // 6. run
-  convGemm->calc(inArgs, outArgs);
+    size_t outputSize =
+        (s.inputSize - s.filterSize + 2 *padding + stride) / stride;
+    TensorShape shape0{batchSize,
+                       s.inputChannels,
+                       s.inputSize,
+                       s.inputSize};
+    TensorShape shape1{s.outputChannels,
+                       s.inputChannels,
+                       s.filterSize,
+                       s.filterSize};
+    TensorShape shape2{batchSize,
+                       s.outputChannels,
+                       outputSize,
+                       outputSize};
+    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape0));
+    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
+    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
+    test.run();
+  }
 }
 
 }  // namespace paddle

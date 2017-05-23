@@ -20,6 +20,7 @@ set(LIBS ${GLOG_LIBRARIES}
          ${CBLAS_LIBRARIES}
          ${CMAKE_THREAD_LIBS_INIT}
          ${CMAKE_DL_LIBS}
+         "rt"
          ${FUNCTION})
 
 target_link_libraries(TensorShapeTest ${LIBS})

@@ -14,6 +14,8 @@ limitations under the License. */
 
 #include "Function.h"
 #include <malloc.h>
+#include <time.h>
+#include <string>
 
 namespace paddle {
 
@@ -294,5 +296,80 @@ protected:
 };
 
 typedef FunctionCompare<CpuMemoryHandle, CpuMemoryHandle> Compare2CpuFunction;
+
+template <class Allocator>
+class FunctionBenchmark {
+public:
+  FunctionBenchmark(const std::string& name,
+                    const FuncConfig& config)
+      : name_(name),
+        function_(FunctionBase::funcRegistrar_.createByType(name)) {
+    function_->init(config);
+  }
+
+  ~FunctionBenchmark() {}
+
+  void addInputs(const BufferArg& input) {
+    size_t size =
+        input.shape().getElements() * sizeOfValuType(input.valueType());
+    funcMemory_.emplace_back(std::make_shared<Allocator>(size));
+    funcInputs_.emplace_back(std::make_shared<BufferArg>(
+        funcMemory_.back()->getBuf(), input.valueType(), input.shape()));
+  }
+
+  void addOutputs(const BufferArg& output) {
+    size_t size =
+        output.shape().getElements() * sizeOfValuType(output.valueType());
+    funcMemory_.emplace_back(std::make_shared<Allocator>(size));
+
+    funcOutputs_.emplace_back(
+        std::make_shared<BufferArg>(funcMemory_.back()->getBuf(),
+                                    output.valueType(),
+                                    output.shape(),
+                                    ASSIGN_TO));
+  }
+
+  void run(int iter = 10) {
+    // prepare arguments
+    Uniform<float> uniform(0.001, 1);
+    for (size_t i = 0; i < funcInputs_.size(); i++) {
+      uniform(*funcInputs_[i]);
+    }
+
+    BufferArgs inArgs;
+    BufferArgs outArgs;
+    for (auto arg : funcInputs_) {
+      inArgs.addArg(*arg);
+    }
+    for (auto arg : funcOutputs_) {
+      outArgs.addArg(*arg);
+    }
+
+    function_->calc(inArgs, outArgs);
+
+    {
+      struct timespec tp_start, tp_end;
+      float  total;
+      clock_gettime(CLOCK_MONOTONIC, &tp_start);
+      for (int i = 0; i < iter; i++) {
+        function_->calc(inArgs, outArgs);
+      }
+      clock_gettime(CLOCK_MONOTONIC, &tp_end);
+      total = ((tp_end.tv_nsec - tp_start.tv_nsec)/1000000.0f);
+      total += (tp_end.tv_sec - tp_start.tv_sec)*1000;
+      total /= iter;
+      LOG(INFO) << name_ << " time: " << total;
+    }
+  }
+
+protected:
+  std::string name_;
+  std::shared_ptr<FunctionBase> function_;
+  std::vector<std::shared_ptr<Allocator>> funcMemory_;
+  std::vector<BufferArgPtr> funcInputs_;
+  std::vector<BufferArgPtr> funcOutputs_;
+};
+
+typedef FunctionBenchmark<CpuMemoryHandle> CpuFunctionBenchmark;
 
 }  // namespace paddle
