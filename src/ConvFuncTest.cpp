@@ -86,7 +86,7 @@ TEST(Convolution, GEMM) {
 }
 
 TEST(Convolution, NNPACK) {
-  if (FunctionBase::funcRegistrar_.hasType("NNPACKConv-CPU")) {
+  if (!FunctionBase::funcRegistrar_.hasType("NNPACKConv-CPU")) {
     LOG(INFO) << "Paddle is not compile with nnpack.";
   } else {
     // NNPACK only supports stride = 1
