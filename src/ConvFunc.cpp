@@ -242,8 +242,6 @@ public:
     }
 
     for (size_t i = 0; i < batchSize; i++) {
-      inputData += i * inputChannels * inputHeight * inputWidth;
-      outputData += i * outputChannels * outputHeight * outputWidth;
       im2col(inputData,
              inputChannels,
              inputHeight,
@@ -274,6 +272,8 @@ public:
                  0.0f,
                  outputData,
                  N);
+      inputData += inputChannels * inputHeight * inputWidth;
+      outputData += outputChannels * outputHeight * outputWidth;
     }
   }
 

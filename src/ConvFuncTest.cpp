@@ -19,49 +19,78 @@ limitations under the License. */
 
 namespace paddle {
 
-TEST(Convolution, float) {
-  #define NUM_LAYER 5
-  size_t inputChannels[NUM_LAYER] = {3, 96, 256, 384, 384};
-  size_t inputHeight[NUM_LAYER] =   {224, 27, 13, 13, 13};
-  size_t inputWidth[NUM_LAYER] =    {224, 27, 13, 13, 13};
-  size_t outputChannels[NUM_LAYER] = {96, 256, 384, 384, 256};
+class TestConvolution {
+public:
+  TestConvolution(const std::string& conv1,
+                  const std::string& conv2) {
+    for (size_t batchSize : {1, 32}) {
+      for (size_t inputSize : {7, 14, 54}) {
+        for (size_t filterSize : {1, 3, 5}) {
+          for (size_t inputChannels : {3, 64}) {
+            for (size_t outputChannels : {3, 64, 128}) {
+              if (inputChannels < outputChannels) break;
+              for (size_t stride : {1, 2}) {
+                  // if batchSize > 1 NNPACKConv only supports stride = 1
+                  if (batchSize > 1 && stride > 1) break;
+                for (size_t padding : {0, 1}) {
+                  if (padding >= filterSize) break;
+                  size_t outputSize =
+                    (inputSize - filterSize + 2 *padding + stride) / stride;
+                  LOG(INFO)
+                    << " batchSize=" << batchSize
+                    << " inputChannels=" << inputChannels
+                    << " inputHeight=" << inputSize
+                    << " inputWidth=" << inputSize
+                    << " outputChannels=" << outputChannels
+                    << " filterHeight=" << filterSize
+                    << " filterWidth=" << filterSize
+                    << " outputHeight=" << outputSize
+                    << " outputWidth=" << outputSize
+                    << " stride=" << stride
+                    << " padding=" << padding;
 
-  size_t batchSize = 1;
-  size_t stride = 1;
-  size_t padding = 1;
-  size_t filterHeight = 3;
-  size_t filterWidth = 3;
-  for (int i = 0; i < NUM_LAYER; i++) {
-    LOG(INFO) << " inputChannels=" << inputChannels[i]
-              << " inputHeight=" << inputHeight[i]
-              << " inputWidth=" << inputWidth[i]
-              << " outputChannels=" << outputChannels[i];
-    Compare2CpuFunction test("NaiveConvolution-CPU",
-                         "ConvolutionForward-CPU",
-                         FuncConfig()
-                             .set("padding", padding)
-                             .set("stride", stride));
+                  Compare2CpuFunction test(conv1,
+                                           conv2,
+                                           FuncConfig()
+                                               .set("padding", padding)
+                                               .set("stride", stride));
 
-    size_t outputHeight =
-        (inputHeight[i] - filterHeight + 2 *padding + stride) / stride;
-    size_t outputWidth =
-        (inputWidth[i] - filterWidth + 2 * padding + stride) /stride;
-    TensorShape shape0{batchSize,
-                       inputChannels[i],
-                       inputHeight[i],
-                       inputWidth[i]};
-    TensorShape shape1{outputChannels[i],
-                       inputChannels[i],
-                       filterHeight,
-                       filterHeight};
-    TensorShape shape2{batchSize,
-                       outputChannels[i],
-                       outputHeight,
-                       outputWidth};
-    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape0));
-    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
-    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
-    test.run();
+                  TensorShape shape0{batchSize,
+                                     inputChannels,
+                                     inputSize,
+                                     inputSize};
+                  TensorShape shape1{outputChannels,
+                                     inputChannels,
+                                     filterSize,
+                                     filterSize};
+                  TensorShape shape2{batchSize,
+                                     outputChannels,
+                                     outputSize,
+                                     outputSize};
+                  test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape0));
+                  test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
+                  test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
+                  test.run();
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+};
+
+TEST(Convolution, GEMM) {
+  TestConvolution test("NaiveConvolution-CPU", "ConvolutionForward-CPU");
+}
+
+TEST(Convolution, NNPACK) {
+  if (FunctionBase::funcRegistrar_.hasType("NNPACKConv-CPU")) {
+    LOG(INFO) << "Paddle is not compile with nnpack.";
+  } else {
+    // NNPACK only supports stride = 1
+    TestConvolution test("ConvolutionForward-CPU", "NNPACKConv-CPU");
   }
 }
 

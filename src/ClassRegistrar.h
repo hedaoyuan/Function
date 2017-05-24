@@ -66,6 +66,15 @@ public:
     return creator(args...);
   }
 
+  bool hasType(const std::string& type) {
+    auto it = creatorMap_.find(type);
+    if (it != creatorMap_.end()) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
   template <typename T>
   inline void forEachType(T callback) {
     for (auto it = creatorMap_.begin(); it != creatorMap_.end(); ++it) {

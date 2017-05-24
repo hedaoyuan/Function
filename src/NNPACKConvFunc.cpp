@@ -43,6 +43,8 @@ public:
     ConvFunctionBase::init(config);
     algorithm_ = nnp_convolution_algorithm_auto;
     transform_strategy_ = nnp_convolution_transform_strategy_compute;
+    nnp_status status = nnp_initialize();
+    CHECK_EQ(status, nnp_status_success);
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -89,6 +91,8 @@ public:
           nullptr);
       CHECK_EQ(status, nnp_status_success);
     } else {
+      // only supports stride = 1
+      CHECK_EQ(stride_, 1);
       nnp_status status = nnp_convolution_output(
           algorithm_,
           batchSize,
