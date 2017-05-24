@@ -19,9 +19,9 @@ limitations under the License. */
 
 namespace paddle {
 
-class TestConvolution {
+class ConvolutionTest {
 public:
-  TestConvolution(const std::string& conv1,
+  ConvolutionTest(const std::string& conv1,
                   const std::string& conv2) {
     for (size_t batchSize : {1, 32}) {
       for (size_t inputSize : {7, 14, 54}) {
@@ -82,73 +82,91 @@ public:
 };
 
 TEST(Convolution, GEMM) {
-  TestConvolution test("NaiveConvolution-CPU", "ConvolutionForward-CPU");
+  ConvolutionTest test("NaiveConvolution-CPU", "ConvolutionForward-CPU");
 }
 
 TEST(Convolution, NNPACK) {
   if (!FunctionBase::funcRegistrar_.hasType("NNPACKConv-CPU")) {
-    LOG(INFO) << "Paddle is not compile with nnpack.";
+    VLOG(3) << "Paddle is compiled without nnpack.";
   } else {
     // NNPACK only supports stride = 1
-    TestConvolution test("ConvolutionForward-CPU", "NNPACKConv-CPU");
+    ConvolutionTest test("ConvolutionForward-CPU", "NNPACKConv-CPU");
   }
 }
 
-TEST(Benchmark, float) {
-  struct Sample{
-    Sample(size_t a, size_t b, size_t c, size_t d)
-      : inputChannels(a), outputChannels(b), inputSize(c), filterSize(d) {}
-    size_t inputChannels;
-    size_t outputChannels;
-    size_t inputSize;
-    size_t filterSize;
-  };
-  for (auto s : {Sample(3, 64, 108, 3),
-                 Sample(64, 64, 54, 3),
-                 Sample(64, 128, 54, 3),
-                 Sample(128, 128, 27, 3),
-                 Sample(64, 128, 54, 1),
-                 Sample(128, 128, 27, 3),
-                 Sample(128, 256, 27, 3),
-                 Sample(256, 256, 14, 3),
-                 Sample(128, 256, 27, 1),
-                 Sample(256, 256, 14, 3),
-                 Sample(256, 512, 14, 3),
-                 Sample(512, 512, 7, 3),
-                 Sample(256, 512, 14, 1),
-                 Sample(512, 512, 7, 3)}) {
-    LOG(INFO) << " inputChannels=" << s.inputChannels
-              << " outputChannels=" << s.outputChannels
-              << " inputSize=" << s.inputSize
-              << " filterSize=" << s.filterSize;
+struct Sample{
+  Sample(size_t a, size_t b, size_t c, size_t d)
+    : inputChannels(a), outputChannels(b), inputSize(c), filterSize(d) {}
+  size_t inputChannels;
+  size_t outputChannels;
+  size_t inputSize;
+  size_t filterSize;
+};
+class ConvolutionBenchmark {
+public:
+  ConvolutionBenchmark(const std::string& conv) {
+    for (auto s : {Sample(3, 64, 108, 3),
+                   Sample(64, 64, 54, 3),
+                   Sample(64, 128, 54, 3),
+                   Sample(128, 128, 27, 3),
+                   Sample(64, 128, 54, 1),
+                   Sample(128, 128, 27, 3),
+                   Sample(128, 256, 27, 3),
+                   Sample(256, 256, 14, 3),
+                   Sample(128, 256, 27, 1),
+                   Sample(256, 256, 14, 3),
+                   Sample(256, 512, 14, 3),
+                   Sample(512, 512, 7, 3),
+                   Sample(256, 512, 14, 1),
+                   Sample(512, 512, 7, 3)}) {
+      LOG(INFO) << " inputChannels=" << s.inputChannels
+                << " outputChannels=" << s.outputChannels
+                << " inputSize=" << s.inputSize
+                << " filterSize=" << s.filterSize;
 
-    size_t batchSize = 1;
-    size_t stride = 1;
-    size_t padding = 1;
+      size_t batchSize = 1;
+      size_t stride = 1;
+      size_t padding = 1;
+      if (s.filterSize == 1) {
+        padding = 0;
+      }
 
-    CpuFunctionBenchmark test("ConvolutionForward-CPU",
-                         FuncConfig()
-                             .set("padding", padding)
-                             .set("stride", stride));
+      CpuFunctionBenchmark test(conv,
+                                FuncConfig()
+                                    .set("padding", padding)
+                                    .set("stride", stride));
 
-    size_t outputSize =
-        (s.inputSize - s.filterSize + 2 *padding + stride) / stride;
-    TensorShape shape0{batchSize,
-                       s.inputChannels,
-                       s.inputSize,
-                       s.inputSize};
-    TensorShape shape1{s.outputChannels,
-                       s.inputChannels,
-                       s.filterSize,
-                       s.filterSize};
-    TensorShape shape2{batchSize,
-                       s.outputChannels,
-                       outputSize,
-                       outputSize};
-    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape0));
-    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
-    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
-    test.run();
+      size_t outputSize =
+          (s.inputSize - s.filterSize + 2 *padding + stride) / stride;
+      TensorShape shape0{batchSize,
+                         s.inputChannels,
+                         s.inputSize,
+                         s.inputSize};
+      TensorShape shape1{s.outputChannels,
+                         s.inputChannels,
+                         s.filterSize,
+                         s.filterSize};
+      TensorShape shape2{batchSize,
+                         s.outputChannels,
+                         outputSize,
+                         outputSize};
+      test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape0));
+      test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
+      test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
+      test.run();
+    }
+  }
+};
+
+TEST(Benchmark, GEMM) {
+  ConvolutionBenchmark test("ConvolutionForward-CPU");
+}
+
+TEST(Benchmark, NNPACK) {
+  if (!FunctionBase::funcRegistrar_.hasType("NNPACKConv-CPU")) {
+    VLOG(3) << "Paddle is compiled without nnpack.";
+  } else {
+    ConvolutionBenchmark test("NNPACKConv-CPU");
   }
 }
 
