@@ -7,11 +7,16 @@ project(function CXX C)
 find_package(Threads REQUIRED)
 
 set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING "A path setting third party libraries download & build directories.")
+option(USE_NNPACK   "Compile PaddlePaddle with NNPACK library" OFF)
 
 include(external/gflags)
 include(external/glog)
 include(external/gtest)
 include(external/openblas)
+
+if(USE_NNPACK)
+  include(external/nnpack)
+endif()
 
 include(flags)
 INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})

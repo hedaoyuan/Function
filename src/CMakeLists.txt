@@ -5,6 +5,9 @@ list(APPEND cpp_files Function.cpp)
 list(APPEND cpp_files Gemm.cpp)
 list(APPEND cpp_files ConvFunc.cpp)
 list(APPEND cpp_files Util.cpp)
+if(USE_NNPACK)
+  list(APPEND cpp_files NNPACKConvFunc.cpp)
+endif()
 
 add_library(function STATIC ${cpp_files})
 add_dependencies(function ${external_project_dependencies})
@@ -22,6 +25,10 @@ set(LIBS ${GLOG_LIBRARIES}
          ${CMAKE_DL_LIBS}
          "rt"
          ${FUNCTION})
+
+if(USE_NNPACK)
+  list(APPEND LIBS ${NNPACK_LIB} ${PTHREADPOOL_LIB})
+endif()
 
 target_link_libraries(TensorShapeTest ${LIBS})
 add_dependencies(TensorShapeTest function)
