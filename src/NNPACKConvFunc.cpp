@@ -41,10 +41,13 @@ class NNPACKConvFunction : public ConvFunctionBase {
 public:
   void init(const FuncConfig& config) override {
     ConvFunctionBase::init(config);
-    algorithm_ = nnp_convolution_algorithm_auto;
+    algorithm_ = get_nnp_convolution_algorithm(config.get<std::string>("algo"));
+    // algorithm_ = nnp_convolution_algorithm_auto;
     transform_strategy_ = nnp_convolution_transform_strategy_compute;
     nnp_status status = nnp_initialize();
     CHECK_EQ(status, nnp_status_success);
+    workspaceBuffer_ = nullptr;
+    workspaceSize_ = 0;
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -73,6 +76,62 @@ public:
     float* filterData = inputs[1].data<float>();
     float* outputData = outputs[0].data<float>();
 
+    size_t needSize;
+    if (batchSize == 1) {
+      nnp_status status = nnp_convolution_inference(
+          algorithm_,
+          transform_strategy_,
+          inputChannels,
+          outputChannels,
+          inputSize,
+          padding,
+          kernelSize,
+          outputSubsampling,
+          nullptr,
+          nullptr,
+          nullptr, /* bias */
+          nullptr,
+          nullptr,
+          &needSize,
+          nnp_activation_identity,
+          nullptr,
+          nullptr, /* threadpool */
+          nullptr);
+      CHECK_EQ(status, nnp_status_success);
+    } else {
+      // only supports stride = 1
+      CHECK_EQ(stride_, 1);
+      nnp_status status = nnp_convolution_output(
+          algorithm_,
+          batchSize,
+          inputChannels,
+          outputChannels,
+          inputSize,
+          padding,
+          kernelSize,
+          nullptr,
+          nullptr,
+          nullptr, /* bias */
+          nullptr,
+          nullptr,
+          &needSize,
+          nnp_activation_identity,
+          nullptr,
+          nullptr, /* threadpool */
+          nullptr);
+      CHECK_EQ(status, nnp_status_success);
+    }
+
+    LOG(INFO) << "workspace size is " << needSize;
+    if (needSize > workspaceSize_) {
+      workspaceSize_ = needSize;
+      if (workspaceBuffer_) {
+        free(workspaceBuffer_);
+      } else {
+        posix_memalign(&workspaceBuffer_, 64, needSize);
+      }
+    }
+
     if (batchSize == 1) {
       nnp_status status = nnp_convolution_inference(
           algorithm_,
@@ -85,8 +144,12 @@ public:
           outputSubsampling,
           inputData,
           filterData,
-          nullptr,
+          nullptr, /* bias */
           outputData,
+          needSize == 0 ? nullptr : workspaceBuffer_,
+          needSize == 0 ? nullptr : &needSize,
+          nnp_activation_identity,
+          nullptr,
           nullptr, /* threadpool */
           nullptr);
       CHECK_EQ(status, nnp_status_success);
@@ -103,9 +166,13 @@ public:
           kernelSize,
           inputData,
           filterData,
-          nullptr,
+          nullptr, /* bias */
           outputData,
+          needSize == 0 ? nullptr : workspaceBuffer_,
+          needSize == 0 ? nullptr : &needSize,
+          nnp_activation_identity,
           nullptr,
+          nullptr, /* threadpool */
           nullptr);
       CHECK_EQ(status, nnp_status_success);
     }
@@ -113,6 +180,8 @@ public:
 private:
   nnp_convolution_algorithm algorithm_;
   nnp_convolution_transform_strategy transform_strategy_;
+  void* workspaceBuffer_;
+  size_t workspaceSize_;
 };
 
 REGISTER_TYPED_FUNC(NNPACKConv, CPU, NNPACKConvFunction);

@@ -22,7 +22,8 @@ namespace paddle {
 class ConvolutionTest {
 public:
   ConvolutionTest(const std::string& conv1,
-                  const std::string& conv2) {
+                  const std::string& conv2,
+                  std::string algo = "auto") {
     for (size_t batchSize : {1, 32}) {
       for (size_t inputSize : {7, 14, 54}) {
         for (size_t filterSize : {1, 3, 5}) {
@@ -53,7 +54,8 @@ public:
                                            conv2,
                                            FuncConfig()
                                                .set("padding", padding)
-                                               .set("stride", stride));
+                                               .set("stride", stride)
+                                               .set("algo", algo));
 
                   TensorShape shape0{batchSize,
                                      inputChannels,
@@ -104,7 +106,8 @@ struct Sample{
 };
 class ConvolutionBenchmark {
 public:
-  ConvolutionBenchmark(const std::string& conv) {
+  ConvolutionBenchmark(const std::string& conv,
+                       std::string algo = "auto") {
     for (auto s : {Sample(3, 64, 108, 3),
                    Sample(64, 64, 54, 3),
                    Sample(64, 128, 54, 3),
@@ -134,7 +137,8 @@ public:
       CpuFunctionBenchmark test(conv,
                                 FuncConfig()
                                     .set("padding", padding)
-                                    .set("stride", stride));
+                                    .set("stride", stride)
+                                    .set("algo", algo));
 
       size_t outputSize =
           (s.inputSize - s.filterSize + 2 *padding + stride) / stride;
@@ -166,6 +170,7 @@ TEST(Benchmark, NNPACK) {
   if (!FunctionBase::funcRegistrar_.hasType("NNPACKConv-CPU")) {
     VLOG(3) << "Paddle is compiled without nnpack.";
   } else {
+    // NNPACK only supports stride = 1
     ConvolutionBenchmark test("NNPACKConv-CPU");
   }
 }

@@ -305,6 +305,8 @@ public:
       : name_(name),
         function_(FunctionBase::funcRegistrar_.createByType(name)) {
     function_->init(config);
+    cacheSize_ = 32 * 1024 * 1024 * 4; // 32M
+    memory_ = std::make_shared<Allocator>(cacheSize_);
   }
 
   ~FunctionBenchmark() {}
@@ -349,17 +351,28 @@ public:
 
     {
       struct timespec tp_start, tp_end;
-      float  total;
-      clock_gettime(CLOCK_MONOTONIC, &tp_start);
+      float  total = 0.0;
       for (int i = 0; i < iter; i++) {
+        flushCache();
+
+        clock_gettime(CLOCK_MONOTONIC, &tp_start);
         function_->calc(inArgs, outArgs);
+        clock_gettime(CLOCK_MONOTONIC, &tp_end);
+        total += ((tp_end.tv_nsec - tp_start.tv_nsec)/1000000.0f);
+        total += (tp_end.tv_sec - tp_start.tv_sec)*1000;
       }
-      clock_gettime(CLOCK_MONOTONIC, &tp_end);
-      total = ((tp_end.tv_nsec - tp_start.tv_nsec)/1000000.0f);
-      total += (tp_end.tv_sec - tp_start.tv_sec)*1000;
       total /= iter;
       LOG(INFO) << name_ << " time: " << total;
     }
+  }
+
+  int flushCache() {
+    int value = 0;
+    int* data = (int*)memory_->getBuf();
+    for (size_t i = 0; i < cacheSize_; i += 64) {
+      value += data[i];
+    }
+    return value;
   }
 
 protected:
@@ -368,6 +381,8 @@ protected:
   std::vector<std::shared_ptr<Allocator>> funcMemory_;
   std::vector<BufferArgPtr> funcInputs_;
   std::vector<BufferArgPtr> funcOutputs_;
+  std::shared_ptr<Allocator> memory_;
+  size_t cacheSize_;
 };
 
 typedef FunctionBenchmark<CpuMemoryHandle> CpuFunctionBenchmark;

@@ -44,6 +44,7 @@ public:
 
 protected:
   std::map<std::string, value> valueMap_;
+  std::map<std::string, std::string> strMap_;
 };
 
 /**
