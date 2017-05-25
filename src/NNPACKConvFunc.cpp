@@ -15,6 +15,10 @@ limitations under the License. */
 #include "ConvFunc.h"
 #include "nnpack.h"
 
+DEFINE_bool(nnpack_allocate_outside,
+            true,
+            "Allocate and free workspace memory outside the NNPACK interface.");
+
 namespace paddle {
 
 nnp_convolution_algorithm get_nnp_convolution_algorithm(
@@ -76,59 +80,68 @@ public:
     float* filterData = inputs[1].data<float>();
     float* outputData = outputs[0].data<float>();
 
+    void* bufferPtr = nullptr;
+    size_t* sizePtr = nullptr;
     size_t needSize;
-    if (batchSize == 1) {
-      nnp_status status = nnp_convolution_inference(
-          algorithm_,
-          transform_strategy_,
-          inputChannels,
-          outputChannels,
-          inputSize,
-          padding,
-          kernelSize,
-          outputSubsampling,
-          nullptr,
-          nullptr,
-          nullptr, /* bias */
-          nullptr,
-          nullptr,
-          &needSize,
-          nnp_activation_identity,
-          nullptr,
-          nullptr, /* threadpool */
-          nullptr);
-      CHECK_EQ(status, nnp_status_success);
-    } else {
-      // only supports stride = 1
-      CHECK_EQ(stride_, 1);
-      nnp_status status = nnp_convolution_output(
-          algorithm_,
-          batchSize,
-          inputChannels,
-          outputChannels,
-          inputSize,
-          padding,
-          kernelSize,
-          nullptr,
-          nullptr,
-          nullptr, /* bias */
-          nullptr,
-          nullptr,
-          &needSize,
-          nnp_activation_identity,
-          nullptr,
-          nullptr, /* threadpool */
-          nullptr);
-      CHECK_EQ(status, nnp_status_success);
-    }
-
-    LOG(INFO) << "workspace size is " << needSize;
-    if (needSize > workspaceSize_) {
-      workspaceSize_ = needSize;
-      if (workspaceBuffer_) {
-        free(workspaceBuffer_);
+    if (FLAGS_nnpack_allocate_outside) {
+      if (batchSize == 1) {
+        nnp_status status = nnp_convolution_inference(
+            algorithm_,
+            transform_strategy_,
+            inputChannels,
+            outputChannels,
+            inputSize,
+            padding,
+            kernelSize,
+            outputSubsampling,
+            nullptr,
+            nullptr,
+            nullptr, /* bias */
+            nullptr,
+            nullptr,
+            &needSize,
+            nnp_activation_identity,
+            nullptr,
+            nullptr, /* threadpool */
+            nullptr);
+        CHECK_EQ(status, nnp_status_success);
       } else {
-        posix_memalign(&workspaceBuffer_, 64, needSize);
+        // only supports stride = 1
+        CHECK_EQ(stride_, 1);
+        nnp_status status = nnp_convolution_output(
+            algorithm_,
+            batchSize,
+            inputChannels,
+            outputChannels,
+            inputSize,
+            padding,
+            kernelSize,
+            nullptr,
+            nullptr,
+            nullptr, /* bias */
+            nullptr,
+            nullptr,
+            &needSize,
+            nnp_activation_identity,
+            nullptr,
+            nullptr, /* threadpool */
+            nullptr);
+        CHECK_EQ(status, nnp_status_success);
+      }
+  
+      LOG(INFO) << "workspace size is " << needSize;
+      if (needSize > workspaceSize_) {
+        workspaceSize_ = needSize;
+        if (workspaceBuffer_) {
+          free(workspaceBuffer_);
+        } else {
+          posix_memalign(&workspaceBuffer_, 64, needSize);
+        }
+      }
+
+      if (needSize) {
+        bufferPtr = workspaceBuffer_;
+        sizePtr = &needSize;
       }
     }
 
@@ -146,8 +159,8 @@ public:
           filterData,
           nullptr, /* bias */
           outputData,
-          needSize == 0 ? nullptr : workspaceBuffer_,
-          needSize == 0 ? nullptr : &needSize,
+          bufferPtr,
+          sizePtr,
           nnp_activation_identity,
           nullptr,
           nullptr, /* threadpool */
@@ -168,8 +181,8 @@ public:
           filterData,
           nullptr, /* bias */
           outputData,
-          needSize == 0 ? nullptr : workspaceBuffer_,
-          needSize == 0 ? nullptr : &needSize,
+          bufferPtr,
+          sizePtr,
           nnp_activation_identity,
           nullptr,
           nullptr, /* threadpool */

@@ -191,6 +191,7 @@ TEST(Benchmark, NNPACK) {
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   paddle::initMain(argc, argv);
+  LOG(INFO) << "The algorithm of NNPACK " << FLAGS_algo;
   return RUN_ALL_TESTS();
 }
 
