@@ -22,10 +22,11 @@ DEFINE_string(algo, "auto", "The algorithm (auto, ft8x8, ft16x16, wt8x8, "
 
 namespace paddle {
 
-#define IS_NNPACK_SUPPORT(algo, filterSize, stride)         \
-    if (algo == "direct" && filterSize != 1) continue;      \
-    if (algo == "direct" && batchSize != 1) continue;       \
-    if (algo == "wt8x8" && filterSize != 3) continue;       \
+#define IS_NNPACK_SUPPORT(algo, filterSize, stride)             \
+    if (algo == "direct" && filterSize != 1) continue;          \
+    if (algo == "direct" && batchSize != 1) continue;           \
+    if (algo == "wt8x8" && filterSize != 3) continue;           \
+    if (algo == "implicit-gemm" && batchSize != 1) continue;    \
     if (algo != "auto" && algo != "implicit-gemm" && stride > 1) continue;
 
 class ConvolutionTest {
