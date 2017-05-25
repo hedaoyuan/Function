@@ -18,6 +18,8 @@ limitations under the License. */
 DEFINE_bool(nnpack_allocate_outside,
             true,
             "Allocate and free workspace memory outside the NNPACK interface.");
+DEFINE_int32(nnpack_num_threads, 0, "The number of nnpack threads"
+             "default: 0; 0 to disable threadpool.");
 
 namespace paddle {
 
@@ -52,6 +54,19 @@ public:
     CHECK_EQ(status, nnp_status_success);
     workspaceBuffer_ = nullptr;
     workspaceSize_ = 0;
+
+    threadpool_ = nullptr;
+    if (FLAGS_nnpack_num_threads) {
+      threadpool_ = pthreadpool_create(FLAGS_nnpack_num_threads);
+      VLOG(3) << "Number of threads "
+              << pthreadpool_get_threads_count(threadpool_);
+    }
+  }
+
+  ~NNPACKConvFunction() {
+    if (threadpool_) {
+      pthreadpool_destroy(threadpool_);
+    }
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
@@ -163,7 +178,7 @@ public:
           sizePtr,
           nnp_activation_identity,
           nullptr,
-          nullptr, /* threadpool */
+          threadpool_, /* threadpool */
           nullptr);
       CHECK_EQ(status, nnp_status_success);
     } else {
@@ -185,7 +200,7 @@ public:
           sizePtr,
           nnp_activation_identity,
           nullptr,
-          nullptr, /* threadpool */
+          threadpool_, /* threadpool */
           nullptr);
       CHECK_EQ(status, nnp_status_success);
     }
@@ -195,6 +210,7 @@ private:
   nnp_convolution_transform_strategy transform_strategy_;
   void* workspaceBuffer_;
   size_t workspaceSize_;
+  pthreadpool_t threadpool_;
 };
 
 REGISTER_TYPED_FUNC(NNPACKConv, CPU, NNPACKConvFunction);
