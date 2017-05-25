@@ -17,7 +17,16 @@ limitations under the License. */
 #include "Function.h"
 #include "FunctionTest.h"
 
+DEFINE_string(algo, "auto", "The algorithm (auto, ft8x8, ft16x16, wt8x8, "
+              "implicit-gemm, or direct) for computing convolution of NNPACK.");
+
 namespace paddle {
+
+#define IS_NNPACK_SUPPORT(algo, filterSize, stride)         \
+    if (algo == "direct" && filterSize != 1) continue;      \
+    if (algo == "direct" && batchSize != 1) continue;       \
+    if (algo == "wt8x8" && filterSize != 3) continue;       \
+    if (algo != "auto" && algo != "implicit-gemm" && stride > 1) continue;
 
 class ConvolutionTest {
 public:
@@ -37,6 +46,7 @@ public:
                   if (padding >= filterSize) break;
                   size_t outputSize =
                     (inputSize - filterSize + 2 *padding + stride) / stride;
+                  IS_NNPACK_SUPPORT(algo, filterSize, stride);
                   LOG(INFO)
                     << " batchSize=" << batchSize
                     << " inputChannels=" << inputChannels
@@ -92,7 +102,7 @@ TEST(Convolution, NNPACK) {
     VLOG(3) << "Paddle is compiled without nnpack.";
   } else {
     // NNPACK only supports stride = 1
-    ConvolutionTest test("ConvolutionForward-CPU", "NNPACKConv-CPU");
+    ConvolutionTest test("ConvolutionForward-CPU", "NNPACKConv-CPU", FLAGS_algo);
   }
 }
 
@@ -133,6 +143,7 @@ public:
       if (s.filterSize == 1) {
         padding = 0;
       }
+      IS_NNPACK_SUPPORT(algo, s.filterSize, stride);
 
       CpuFunctionBenchmark test(conv,
                                 FuncConfig()
@@ -171,7 +182,7 @@ TEST(Benchmark, NNPACK) {
     VLOG(3) << "Paddle is compiled without nnpack.";
   } else {
     // NNPACK only supports stride = 1
-    ConvolutionBenchmark test("NNPACKConv-CPU");
+    ConvolutionBenchmark test("NNPACKConv-CPU", FLAGS_algo);
   }
 }
 

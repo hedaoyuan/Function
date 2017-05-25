@@ -56,6 +56,7 @@ void runInitFunctions() {
 }
 
 void initMain(int argc, char** argv) {
+  gflags::ParseCommandLineFlags(&argc, &argv, true);
   runInitFunctions();
 }
 
