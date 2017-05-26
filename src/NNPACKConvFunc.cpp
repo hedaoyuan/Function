@@ -16,7 +16,7 @@ limitations under the License. */
 #include "nnpack.h"
 
 DEFINE_bool(nnpack_allocate_outside,
-            true,
+            false,
             "Allocate and free workspace memory outside the NNPACK interface.");
 DEFINE_int32(nnpack_num_threads, 0, "The number of nnpack threads"
              "default: 0; 0 to disable threadpool.");
@@ -111,13 +111,13 @@ public:
             outputSubsampling,
             nullptr,
             nullptr,
-            nullptr, /* bias */
+            nullptr,
             nullptr,
             nullptr,
             &needSize,
             nnp_activation_identity,
             nullptr,
-            nullptr, /* threadpool */
+            nullptr,
             nullptr);
         CHECK_EQ(status, nnp_status_success);
       } else {
@@ -133,13 +133,13 @@ public:
             kernelSize,
             nullptr,
             nullptr,
-            nullptr, /* bias */
+            nullptr,
             nullptr,
             nullptr,
             &needSize,
             nnp_activation_identity,
             nullptr,
-            nullptr, /* threadpool */
+            nullptr,
             nullptr);
         CHECK_EQ(status, nnp_status_success);
       }
