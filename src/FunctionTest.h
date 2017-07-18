@@ -16,6 +16,7 @@ limitations under the License. */
 #include <malloc.h>
 #include <time.h>
 #include <string>
+#include <cmath>
 
 namespace paddle {
 

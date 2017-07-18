@@ -1,24 +1,15 @@
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-set(PROJ_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
-
 cmake_minimum_required(VERSION 3.0)
 
 project(function CXX C)
-find_package(Threads REQUIRED)
 
-set(THIRD_PARTY_PATH "${PROJ_ROOT}/third_party" CACHE STRING "A path setting third party libraries download & build directories.")
-option(USE_NNPACK   "Compile PaddlePaddle with NNPACK library" OFF)
+list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+set(THIRD_PARTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
+    CACHE STRING "A path setting third party libraries download & build directories.")
 
-include(external/gflags)
-include(external/glog)
-include(external/gtest)
-include(external/openblas)
+option(USE_NNPACK   "Compile function with NNPACK library" OFF)
 
-if(USE_NNPACK)
-  include(external/nnpack)
-endif()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
-include(flags)
-INCLUDE_DIRECTORIES(${CBLAS_INC_DIR})
+include(dependencies)
 
 add_subdirectory(src)

@@ -56,6 +56,9 @@ void runInitFunctions() {
 }
 
 void initMain(int argc, char** argv) {
+#ifndef GFLAGS_GFLAGS_H_
+  namespace gflags = google;
+#endif
   gflags::ParseCommandLineFlags(&argc, &argv, true);
   runInitFunctions();
 }
