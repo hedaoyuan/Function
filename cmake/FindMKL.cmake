@@ -19,7 +19,7 @@ find_library(MKL_INTEL_LP64 NAMES mkl_intel_lp64 PATHS
   ${MKL_ROOT}/lib
   ${MKL_ROOT}/lib/intel64)
 
-set(MKL_LIBRARYS ${MKL_CORE_LIB} ${MKL_SEQUENTIAL_LIB} ${MKL_INTEL_LP64})
+set(MKL_LIBRARYS -Wl,--start-group ${MKL_INTEL_LP64} ${MKL_SEQUENTIAL_LIB} ${MKL_CORE_LIB} -Wl,--end-group)
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(MKL DEFAULT_MSG MKL_INCLUDE_DIR MKL_CORE_LIB MKL_SEQUENTIAL_LIB MKL_INTEL_LP64)
 
