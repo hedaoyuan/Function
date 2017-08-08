@@ -2,3 +2,4 @@
 build/
 build_*/
 third_party/
+tmp/
