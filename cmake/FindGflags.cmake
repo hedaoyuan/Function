@@ -7,8 +7,8 @@
 
 set(GFLAGS_ROOT "" CACHE PATH "Folder contains gflags")
 
-find_path(GFLAGS_INCLUDE_DIR gflags/gflags.h PATHS ${GFLAGS_ROOT}/include)
-find_library(GFLAGS_LIBRARY gflags PATHS ${GFLAGS_ROOT}/lib)
+find_path(GFLAGS_INCLUDE_DIR gflags/gflags.h PATHS ${GFLAGS_ROOT}/include NO_DEFAULT_PATH)
+find_library(GFLAGS_LIBRARY gflags PATHS ${GFLAGS_ROOT}/lib NO_DEFAULT_PATH)
 
 include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(GFLAGS DEFAULT_MSG GFLAGS_INCLUDE_DIR GFLAGS_LIBRARY)

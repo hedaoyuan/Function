@@ -1,15 +1,6 @@
 
 set(DEPENDENCY_LIBS "")
 
-#find gflags
-find_package(Gflags)
-if (GFLAGS_FOUND)
-  include_directories(${GFLAGS_INCLUDE_DIR})
-  list(APPEND DEPENDENCY_LIBS ${GFLAGS_LIBRARY})
-else()
-  message(FATAL_ERROR "gflags is not found.")
-endif()
-
 # find glog
 find_package(Glog)
 if (GLOG_FOUND)
@@ -17,6 +8,15 @@ if (GLOG_FOUND)
   list(APPEND DEPENDENCY_LIBS ${GLOG_LIBRARY})
 else()
   message(FATAL_ERROR "glog is not found.")
+endif()
+
+#find gflags
+find_package(Gflags)
+if (GFLAGS_FOUND)
+  include_directories(${GFLAGS_INCLUDE_DIR})
+  list(APPEND DEPENDENCY_LIBS ${GFLAGS_LIBRARY})
+else()
+  message(FATAL_ERROR "gflags is not found.")
 endif()
 
 # find gtest
