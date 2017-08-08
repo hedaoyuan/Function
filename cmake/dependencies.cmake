@@ -31,6 +31,13 @@ endif()
 # find blas
 set(CBLAS_FOUND OFF)
 if (NOT CBLAS_FOUND)
+  find_package(MKL)
+  if (MKL_FOUND)
+    include_directories(${MKL_INCLUDE_DIR})
+    list(APPEND DEPENDENCY_LIBS ${MKL_LIBRARYS})
+    add_definitions(-DPADDLE_USE_MKL)
+    set(CBLAS_FOUND ON)
+  endif()
 endif()
 
 if (NOT CBLAS_FOUND)
