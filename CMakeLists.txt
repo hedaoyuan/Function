@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 
 project(function CXX C)
+find_package(Threads REQUIRED)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 set(THIRD_PARTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
@@ -8,9 +9,9 @@ set(THIRD_PARTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
 
 option(USE_NNPACK   "Compile function with NNPACK library" OFF)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
-
 include(dependencies)
-list(APPEND DEPENDENCY_LIBS pthread)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
+list(APPEND DEPENDENCY_LIBS ${CMAKE_THREAD_LIBS_INIT})
 
 add_subdirectory(src)
