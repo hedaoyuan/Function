@@ -53,6 +53,14 @@ if (NOT CBLAS_FOUND)
   message(FATAL_ERROR "blas is not found.")
 endif()
 
+# find Eigen
+find_package(Eigen)
+if (EIGEN_FOUND)
+  include_directories(${EIGEN_INCLUDE_DIR})
+else()
+  message(FATAL_ERROR "eigen is not found.")
+endif()
+
 # find nnpack
 if(USE_NNPACK)
   find_package(NNPACK)
