@@ -11,5 +11,6 @@ option(USE_NNPACK   "Compile function with NNPACK library" OFF)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
 
 include(dependencies)
+list(APPEND DEPENDENCY_LIBS pthread)
 
 add_subdirectory(src)

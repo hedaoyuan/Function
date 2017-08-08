@@ -28,6 +28,25 @@ else()
   message(FATAL_ERROR "gtest is not found.")
 endif()
 
+# find blas
+set(CBLAS_FOUND OFF)
+if (NOT CBLAS_FOUND)
+endif()
+
+if (NOT CBLAS_FOUND)
+  find_package(OpenBLAS)
+  if (OPENBLAS_FOUND)
+    include_directories(${OPENBLAS_INCLUDE_DIR})
+    list(APPEND DEPENDENCY_LIBS ${OPENBLAS_LIBRARY})
+    set(CBLAS_FOUND ON)
+  endif()
+endif()
+
+if (NOT CBLAS_FOUND)
+  message(FATAL_ERROR "blas is not found.")
+endif()
+
+# find nnpack
 if(USE_NNPACK)
   find_package(NNPACK)
   if (NNPACK_FOUND)
