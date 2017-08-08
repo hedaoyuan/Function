@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Function.h"
+#include <memory>
 #include <malloc.h>
 #include <time.h>
 #include <string>
@@ -306,8 +307,8 @@ public:
       : name_(name),
         function_(FunctionBase::funcRegistrar_.createByType(name)) {
     function_->init(config);
-    cacheSize_ = 32 * 1024 * 1024 * 4; // 32M
-    memory_ = std::make_shared<Allocator>(cacheSize_);
+    cacheSize_ = 32 * 1024 * 1024; // 32M
+    memory_ = std::make_shared<Allocator>(cacheSize_ * 4);
   }
 
   ~FunctionBenchmark() {}

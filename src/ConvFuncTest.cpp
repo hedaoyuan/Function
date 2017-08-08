@@ -14,8 +14,6 @@ limitations under the License. */
 
 #include <gtest/gtest.h>
 #include <gflags/gflags.h>
-#include <memory>
-#include "Function.h"
 #include "FunctionTest.h"
 
 DEFINE_string(algo, "auto", "The algorithm (auto, ft8x8, ft16x16, wt8x8, "
