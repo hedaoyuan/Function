@@ -353,18 +353,19 @@ public:
 
     {
       struct timespec tp_start, tp_end;
-      float  total = 0.0;
+      float  totalms = 0.0;
       for (int i = 0; i < iter; i++) {
         flushCache();
 
         clock_gettime(CLOCK_MONOTONIC, &tp_start);
         function_->calc(inArgs, outArgs);
         clock_gettime(CLOCK_MONOTONIC, &tp_end);
-        total += ((tp_end.tv_nsec - tp_start.tv_nsec)/1000000.0f);
-        total += (tp_end.tv_sec - tp_start.tv_sec)*1000;
+        totalms += ((tp_end.tv_nsec - tp_start.tv_nsec)/1000000.0f);
+        totalms += (tp_end.tv_sec - tp_start.tv_sec)*1000;
       }
-      total /= iter;
-      LOG(INFO) << name_ << " time: " << total;
+      totalms /= iter;
+      double gflops = (double)(function_->ops(inArgs, outArgs)) / 1e6 / totalms;
+      LOG(INFO) << name_ << " time(ms): " << totalms << " gflops: " << gflops;
     }
   }
 

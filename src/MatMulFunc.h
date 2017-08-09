@@ -42,6 +42,17 @@ public:
     CHECK_EQ(bCol, outputs[0].shape()[1]);
   }
 
+  int64_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    const int64_t M = outputs[0].shape()[0];
+    const int64_t N = outputs[0].shape()[1];
+    const int64_t K = !aTrans_ ? inputs[0].shape()[1] : inputs[0].shape()[0];
+
+    // number of floating-point operations
+    int64_t ops = 2 * M * N * K;
+
+    return ops;
+  }
+
 protected:
   bool aTrans_;
   bool bTrans_;

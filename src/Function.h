@@ -120,7 +120,7 @@ public:
   // And some Functions have the same input and output shapes,
   // so you may not need to enter the complete number of arguments.
   // But entering the full arguments is always correct for this interface.
-  virtual size_t ops(const BufferArgs& inputs, const BufferArgs& outputs) {
+  virtual int64_t ops(const BufferArgs& inputs, const BufferArgs& outputs) {
     return 0;
   }
 
