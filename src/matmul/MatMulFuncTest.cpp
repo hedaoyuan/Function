@@ -40,11 +40,12 @@ void TestMatMulFunc(const std::string& conv1,
             size_t heightC = dimM;
             size_t widthC = dimN;
 
-            Compare2CpuFunction test(conv1,
-                                     conv2,
-                                     FuncConfig()
-                                         .set("aTrans", transa)
-                                         .set("bTrans", transb));
+            Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>
+                test(conv1,
+                     conv2,
+                     FuncConfig()
+                         .set("aTrans", transa)
+                         .set("bTrans", transb));
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{heightA, widthA}));
             test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{heightB, widthB}));
             test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{heightC, widthC}));

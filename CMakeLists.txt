@@ -17,6 +17,8 @@ set(THIRD_PARTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
 
 option(USE_NNPACK   "Compile function with NNPACK library" OFF)
 
+add_definitions(-DPADDLE_ONLY_CPU)
+
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Choose the type of build, options are: Debug Release RelWithDebInfo MinSizeRel." FORCE)
 endif()

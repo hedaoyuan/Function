@@ -52,6 +52,14 @@ std::string FuncConfig::get<std::string>(const std::string& key) const {
 }
 
 template <>
+std::vector<size_t> FuncConfig::get<std::vector<size_t>>(
+    const std::string& key) const {
+  auto it = vecMap_.find(key);
+  CHECK(it != vecMap_.end()) << "Cannot find value: '" << key << "'";
+  return it->second;
+}
+
+template <>
 FuncConfig& FuncConfig::set<size_t>(const std::string& key, size_t v) {
   CHECK_EQ(static_cast<int>(valueMap_.count(key)), 0) << "Duplicated value: "
                                                       << key;
@@ -88,6 +96,15 @@ FuncConfig& FuncConfig::set<std::string>(const std::string& key, std::string v) 
   CHECK_EQ(static_cast<int>(strMap_.count(key)), 0) << "Duplicated value: "
                                                       << key;
   strMap_[key] = v;
+  return *this;
+}
+
+template <>
+FuncConfig& FuncConfig::set<std::vector<size_t>>(
+    const std::string& key, std::vector<size_t> v) {
+  CHECK_EQ(static_cast<int>(vecMap_.count(key)), 0) << "Duplicated value: "
+                                                    << key;
+  vecMap_[key] = v;
   return *this;
 }
 

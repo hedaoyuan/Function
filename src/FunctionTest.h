@@ -13,48 +13,12 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "Function.h"
+#include "MemoryHandle.h"
 #include <memory>
-#include <malloc.h>
-#include <time.h>
 #include <string>
 #include <cmath>
 
 namespace paddle {
-
-class MemoryHandle {
-protected:
-  explicit MemoryHandle(size_t size) : size_(size), buf_(nullptr) {}
-  virtual ~MemoryHandle() {}
-
-public:
-  void* getBuf() const { return buf_; }
-  size_t getSize() const { return size_; }
-
-protected:
-  // address returned by GPU/CPU memory allocation
-  size_t size_;
-  void* buf_;
-};
-
-/**
- * Wrapper class for raw cpu memory handle.
- * The raw handle will be released at destructor
- */
-class CpuMemoryHandle : public MemoryHandle {
-public:
-  explicit CpuMemoryHandle(size_t size) : MemoryHandle(size) {
-    buf_ = memalign(32ul, size);
-    CHECK(buf_) << "Fail to allocate CPU memory: size=" << size;
-    if (size > 1000 * 1000 * 1000) {
-      LOG(INFO) << "CpuMemoryHandle alloc big buf size=" << size;
-    }
-  }
-  virtual ~CpuMemoryHandle() {
-    if (buf_) {
-      free(buf_);
-    }
-  }
-};
 
 template<class T>
 class RandNorm {
@@ -168,16 +132,33 @@ private:
   AssertEqual<float> compare_;
 };
 
+namespace test {
+template <DeviceType DType>
+struct Allocator;
+
+template <>
+struct Allocator<DEVICE_TYPE_CPU> {
+  using type = CpuMemoryHandle;
+};
+
+template <>
+struct Allocator<DEVICE_TYPE_GPU> {
+  using type = GpuMemoryHandle;
+};
+
+}  // namespace test
+
 typedef std::shared_ptr<BufferArg> BufferArgPtr;
 
 /**
- * \brief A class for compare the two implementations of a Function.
- *
+ * \brief A class for comparing two Functions of different implementations.
+ *        For example, can be used to compare the CPU and GPU implementation
+ *        of the function is consistent.
  *
  * Use case:
  *  // Initializes a test object, the corresponding cpu and gpu Function
  *  // are constructed according to FunctionName and FuncConfig.
- *  FunctionCompare test(FunctionName1, FunctionName2, FuncConfig);
+ *  CpuGpuFuncCompare test(FunctionName, FuncConfig);
  *  // Prepare inputs and outputs arguments.
  *  // Here the input and output can not contain real data,
  *  // only contains the argument type and shape.
@@ -193,20 +174,22 @@ typedef std::shared_ptr<BufferArg> BufferArgPtr;
  *  // Compares CPU and GPU calculation results for consistency.
  *  test.run();
  */
-// TODO: Replace Allocator1 and Allocator2 with DeviceType
-template <class Allocator1, class Allocator2>
-class FunctionCompare {
+template <DeviceType DType1, DeviceType DType2>
+class Compare2Function {
 public:
-  FunctionCompare(const std::string& name1,
-                  const std::string& name2,
-                  const FuncConfig& config)
+  typedef typename test::Allocator<DType1>::type Allocator1;
+  typedef typename test::Allocator<DType2>::type Allocator2;
+
+  Compare2Function(const std::string& name1,
+                   const std::string& name2,
+                   const FuncConfig& config)
       : function1_(FunctionBase::funcRegistrar_.createByType(name1)),
         function2_(FunctionBase::funcRegistrar_.createByType(name2)) {
     function1_->init(config);
     function2_->init(config);
   }
 
-  ~FunctionCompare() {}
+  ~Compare2Function() {}
 
   // input need only contains shape, do not contains data.
   void addInputs(const BufferArg& input) {
@@ -223,7 +206,7 @@ public:
   }
 
   // output need only contains shape, do not contains data.
-  void addOutputs(const BufferArg& output) {
+  void addOutputs(const BufferArg& output, ArgType argType = ASSIGN_TO) {
     size_t size =
         output.shape().getElements() * sizeOfValuType(output.valueType());
     func1Memory_.emplace_back(std::make_shared<Allocator1>(size));
@@ -233,12 +216,12 @@ public:
         std::make_shared<BufferArg>(func1Memory_.back()->getBuf(),
                                     output.valueType(),
                                     output.shape(),
-                                    ASSIGN_TO));
+                                    argType));
     func2Outputs_.emplace_back(
         std::make_shared<BufferArg>(func2Memory_.back()->getBuf(),
                                     output.valueType(),
                                     output.shape(),
-                                    ASSIGN_TO));
+                                    argType));
   }
 
   void run() {
@@ -263,9 +246,13 @@ public:
     callFunction(function1_.get(), func1Inputs_, func1Outputs_);
     callFunction(function2_.get(), func2Inputs_, func2Outputs_);
 
-    // check outputs and inouts
+    // check outputs
     compareOutputs();
   }
+
+  std::shared_ptr<FunctionBase> getFunction1() const { return function1_; }
+
+  std::shared_ptr<FunctionBase> getFunction2() const { return function2_; }
 
 protected:
   // only init cpu argument, gpu argument copy from cpu argument.
@@ -297,97 +284,13 @@ protected:
   std::vector<BufferArgPtr> func2Outputs_;
 };
 
-typedef FunctionCompare<CpuMemoryHandle, CpuMemoryHandle> Compare2CpuFunction;
-
-template <class Allocator>
-class FunctionBenchmark {
+class CpuGpuFuncCompare
+    : public Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU> {
 public:
-  FunctionBenchmark(const std::string& name,
-                    const FuncConfig& config)
-      : name_(name),
-        function_(FunctionBase::funcRegistrar_.createByType(name)) {
-    function_->init(config);
-    cacheSize_ = 32 * 1024 * 1024; // 32M
-    memory_ = std::make_shared<Allocator>(cacheSize_ * 4);
-  }
+  CpuGpuFuncCompare(const std::string& name, const FuncConfig& config)
+      : Compare2Function(name + "-CPU", name + "-GPU", config) {}
 
-  ~FunctionBenchmark() {}
-
-  void addInputs(const BufferArg& input) {
-    size_t size =
-        input.shape().getElements() * sizeOfValuType(input.valueType());
-    funcMemory_.emplace_back(std::make_shared<Allocator>(size));
-    funcInputs_.emplace_back(std::make_shared<BufferArg>(
-        funcMemory_.back()->getBuf(), input.valueType(), input.shape()));
-  }
-
-  void addOutputs(const BufferArg& output) {
-    size_t size =
-        output.shape().getElements() * sizeOfValuType(output.valueType());
-    funcMemory_.emplace_back(std::make_shared<Allocator>(size));
-
-    funcOutputs_.emplace_back(
-        std::make_shared<BufferArg>(funcMemory_.back()->getBuf(),
-                                    output.valueType(),
-                                    output.shape(),
-                                    ASSIGN_TO));
-  }
-
-  void run(int iter = 10) {
-    // prepare arguments
-    Uniform<float> uniform(0.001, 1);
-    for (size_t i = 0; i < funcInputs_.size(); i++) {
-      uniform(*funcInputs_[i]);
-    }
-
-    BufferArgs inArgs;
-    BufferArgs outArgs;
-    for (auto arg : funcInputs_) {
-      inArgs.addArg(*arg);
-    }
-    for (auto arg : funcOutputs_) {
-      outArgs.addArg(*arg);
-    }
-
-    function_->calc(inArgs, outArgs);
-
-    {
-      struct timespec tp_start, tp_end;
-      float  totalms = 0.0;
-      for (int i = 0; i < iter; i++) {
-        flushCache();
-
-        clock_gettime(CLOCK_MONOTONIC, &tp_start);
-        function_->calc(inArgs, outArgs);
-        clock_gettime(CLOCK_MONOTONIC, &tp_end);
-        totalms += ((tp_end.tv_nsec - tp_start.tv_nsec)/1000000.0f);
-        totalms += (tp_end.tv_sec - tp_start.tv_sec)*1000;
-      }
-      totalms /= iter;
-      double gflops = (double)(function_->ops(inArgs, outArgs)) / 1e6 / totalms;
-      LOG(INFO) << name_ << " time(ms): " << totalms << " gflops: " << gflops;
-    }
-  }
-
-  int flushCache() {
-    int value = 0;
-    int* data = (int*)memory_->getBuf();
-    for (size_t i = 0; i < cacheSize_; i += 64) {
-      value += data[i];
-    }
-    return value;
-  }
-
-protected:
-  std::string name_;
-  std::shared_ptr<FunctionBase> function_;
-  std::vector<std::shared_ptr<Allocator>> funcMemory_;
-  std::vector<BufferArgPtr> funcInputs_;
-  std::vector<BufferArgPtr> funcOutputs_;
-  std::shared_ptr<Allocator> memory_;
-  size_t cacheSize_;
+  ~CpuGpuFuncCompare() {}
 };
-
-typedef FunctionBenchmark<CpuMemoryHandle> CpuFunctionBenchmark;
 
 }  // namespace paddle
