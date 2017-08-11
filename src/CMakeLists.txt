@@ -1,8 +1,8 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
-list(APPEND cpp_files Util.cpp)
-file(GLOB cpp_files . BufferArg.cpp)
+file(GLOB cpp_files . Util.cpp)
+list(APPEND cpp_files BufferArg.cpp)
 list(APPEND cpp_files Function.cpp)
 list(APPEND cpp_files Gemm.cpp)
 list(APPEND cpp_files conv/ConvFunc.cpp)
