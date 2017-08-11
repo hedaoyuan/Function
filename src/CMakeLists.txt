@@ -1,15 +1,16 @@
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
+list(APPEND cpp_files Util.cpp)
 file(GLOB cpp_files . BufferArg.cpp)
 list(APPEND cpp_files Function.cpp)
 list(APPEND cpp_files Gemm.cpp)
-list(APPEND cpp_files ConvFunc.cpp)
+list(APPEND cpp_files conv/ConvFunc.cpp)
 list(APPEND cpp_files matmul/BlasMatMulFunc.cpp)
 list(APPEND cpp_files matmul/EigenMatMulFunc.cpp)
-list(APPEND cpp_files Util.cpp)
+
 if(USE_NNPACK)
-  list(APPEND cpp_files NNPACKConvFunc.cpp)
+  list(APPEND cpp_files conv/NNPACKConvFunc.cpp)
 endif()
 
 # function library
@@ -20,7 +21,7 @@ set(test_files)
 list(APPEND test_files TensorShapeTest.cpp)
 list(APPEND test_files BufferArgTest.cpp)
 list(APPEND test_files FunctionTest.cpp)
-list(APPEND test_files ConvFuncTest.cpp)
+list(APPEND test_files conv/ConvFuncTest.cpp)
 list(APPEND test_files matmul/MatMulFuncTest.cpp)
 list(APPEND test_files matmul/MatMulBenchmark.cpp)
 
