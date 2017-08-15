@@ -72,3 +72,12 @@ if(USE_NNPACK)
     message(WARNING "NNPACK is not found.")
   endif()
 endif()
+
+# find benchmark
+find_package(Benchmark)
+if (BENCHMARK_FOUND)
+  include_directories(${BENCHMARK_INCLUDE_DIR})
+  list(APPEND DEPENDENCY_LIBS ${BENCHMARK_LIBRARY})
+else()
+  message(FATAL_ERROR "benchmark is not found.")
+endif()
