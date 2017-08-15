@@ -12,36 +12,14 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-#include <gtest/gtest.h>
-#include "FunctionTest.h"
 #include "FunctionBenchmark.h"
 
 namespace paddle {
 
-void BasicBenchmark(const std::string& conv) {
-  for (size_t size = 32; size <= 1024; size += 32) {
-    LOG(INFO) << "Matrix size is: " << size;
-    CpuFunctionBenchmark test(conv,
-                              FuncConfig()
-                                  .set("aTrans", false)
-                                  .set("bTrans", false));
-    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{size, size}));
-    test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{size, size}));
-    test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{size, size}));
-    test.run();
-  }
-}
-
-TEST(MatMul, Blas) {
-  BasicBenchmark("BlasMatMul-CPU");
-}
-
-TEST(MatMul, Eigen) {
-  BasicBenchmark("EigenMatMul-CPU");
-}
-
-void TypicalCase(const std::string& conv, size_t M, size_t N, size_t K) {
-  LOG(INFO) << "MxNxK: " << M << "x" << N << "x" << K;
+void BM_MatMul(benchmark::State& state, const std::string& conv) {
+  size_t M = state.range(0);
+  size_t N = state.range(1);
+  size_t K = state.range(2);
   CpuFunctionBenchmark test(conv,
                             FuncConfig()
                                 .set("aTrans", false)
@@ -49,52 +27,85 @@ void TypicalCase(const std::string& conv, size_t M, size_t N, size_t K) {
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{M, K}));
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{K, N}));
   test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, TensorShape{M, N}));
-  test.run();
+  test.run(state);
 }
 
-void Case1(const std::string& conv) {
-  TypicalCase(conv, 64, 9216, 32);
-  TypicalCase(conv, 128, 2304, 64);
-  TypicalCase(conv, 128, 2304, 128);
-  TypicalCase(conv, 256, 576, 128);
-  TypicalCase(conv, 256, 576, 256);
-  TypicalCase(conv, 512, 144, 256);
-  TypicalCase(conv, 512, 144, 512);
-  TypicalCase(conv, 1024, 36, 512);
-  TypicalCase(conv, 1024, 36, 1024);
-}
+// Benchmark of Eigen-CPU
+BENCHMARK_CAPTURE(BM_MatMul, Eigen-CPU, "EigenMatMul-CPU")
+    ->Args({32, 32, 32})
+    ->Args({64, 64, 64})
+    ->Args({96, 96, 96})
+    ->Args({128, 128, 128})
+    ->Args({256, 256, 256})
+    ->Args({384, 384, 384})
+    ->Args({512, 512, 512})
+    ->Unit(benchmark::kMicrosecond);
 
-TEST(Blas, Case1) {
-  Case1("BlasMatMul-CPU");
-}
+BENCHMARK_CAPTURE(BM_MatMul, Eigen-CPU, "EigenMatMul-CPU")
+    ->Args({64, 9216, 32})
+    ->Args({128, 2304, 64})
+    ->Args({128, 2304, 128})
+    ->Args({256, 576, 128})
+    ->Args({256, 576, 256})
+    ->Args({512, 144, 256})
+    ->Args({512, 144, 512})
+    ->Args({1024, 36, 512})
+    ->Args({1024, 36, 1024})
+    ->Unit(benchmark::kMicrosecond);
 
-TEST(Eigen, Case1) {
-  Case1("EigenMatMul-CPU");
-}
+BENCHMARK_CAPTURE(BM_MatMul, Eigen-CPU, "EigenMatMul-CPU")
+    ->Args({9, 128, 256})
+    ->Args({16, 64, 256})
+    ->Args({48, 64, 256})
+    ->Args({48, 96, 64})
+    ->Args({48, 104, 64})
+    ->Args({64, 96, 64})
+    ->Args({64, 104, 64})
+    ->Args({128, 128, 256})
+    ->Unit(benchmark::kMicrosecond);
 
-void Case2(const std::string& conv) {
-  TypicalCase(conv, 9, 128, 256);
-  TypicalCase(conv, 16, 64, 256);
-  TypicalCase(conv, 48, 64, 256);
-  TypicalCase(conv, 48, 96, 64);
-  TypicalCase(conv, 48, 104, 64);
-  TypicalCase(conv, 64, 96, 64);
-  TypicalCase(conv, 64, 104, 64);
-  TypicalCase(conv, 128, 128, 256);
-}
+// Benchmark of Blas
+BENCHMARK_CAPTURE(BM_MatMul, Blas-CPU, "BlasMatMul-CPU")
+    ->Args({32, 32, 32})
+    ->Args({64, 64, 64})
+    ->Args({96, 96, 96})
+    ->Args({128, 128, 128})
+    ->Args({256, 256, 256})
+    ->Args({384, 384, 384})
+    ->Args({512, 512, 512})
+    ->Unit(benchmark::kMicrosecond);
 
-TEST(Blas, Case2) {
-  Case2("BlasMatMul-CPU");
-}
+BENCHMARK_CAPTURE(BM_MatMul, Blas-CPU, "BlasMatMul-CPU")
+    ->Args({64, 9216, 32})
+    ->Args({128, 2304, 64})
+    ->Args({128, 2304, 128})
+    ->Args({256, 576, 128})
+    ->Args({256, 576, 256})
+    ->Args({512, 144, 256})
+    ->Args({512, 144, 512})
+    ->Args({1024, 36, 512})
+    ->Args({1024, 36, 1024})
+    ->Unit(benchmark::kMicrosecond);
 
-TEST(Eigen, Case2) {
-  Case2("EigenMatMul-CPU");
-}
+BENCHMARK_CAPTURE(BM_MatMul, Blas-CPU, "BlasMatMul-CPU")
+    ->Args({9, 128, 256})
+    ->Args({16, 64, 256})
+    ->Args({48, 64, 256})
+    ->Args({48, 96, 64})
+    ->Args({48, 104, 64})
+    ->Args({64, 96, 64})
+    ->Args({64, 104, 64})
+    ->Args({128, 128, 256})
+    ->Unit(benchmark::kMicrosecond);
 
 }  // namespace paddle
 
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   paddle::initMain(argc, argv);
-  return RUN_ALL_TESTS();
+  ::benchmark::Initialize(&argc, argv);
+  if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
+  ::benchmark::RunSpecifiedBenchmarks();
+
+  return 0;
 }
