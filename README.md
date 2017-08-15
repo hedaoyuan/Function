@@ -1,6 +1,7 @@
 # Function
 
-## Benchmark of MatMul
+## [Benchmark of MatMul](https://github.com/hedaoyuan/Function/blob/master/src/matmul/README.md)
+Compare the matrix multiplication performance of Eigen and OpenBlas library.
 
-Environment: MI 5, Android 7.0, Snapdragon 820 1.8GHz
+ARMv7 environment the matrix multiplication of Eigen faster than OpenBlas, ARMv8 environment the matrix multiplication of OpenBlas faster than Eigen.
 
