@@ -16,11 +16,11 @@ limitations under the License. */
 
 namespace paddle {
 
-void BM_MatMul(benchmark::State& state, const std::string& conv) {
+void BM_MatMul(benchmark::State& state, const std::string& matmul) {
   size_t M = state.range(0);
   size_t N = state.range(1);
   size_t K = state.range(2);
-  CpuFunctionBenchmark test(conv,
+  CpuFunctionBenchmark test(matmul,
                             FuncConfig()
                                 .set("aTrans", false)
                                 .set("bTrans", false));

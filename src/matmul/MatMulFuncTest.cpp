@@ -18,8 +18,8 @@ limitations under the License. */
 
 namespace paddle {
 
-void TestMatMulFunc(const std::string& conv1,
-                    const std::string& conv2) {
+void TestMatMulFunc(const std::string& matmul1,
+                    const std::string& matmul2) {
   for (const auto transa : {false, true}) {
     for (const auto transb : {false, true}) {
       for (const auto dimM : {1, 10, 45, 100}) {
@@ -41,8 +41,8 @@ void TestMatMulFunc(const std::string& conv1,
             size_t widthC = dimN;
 
             Compare2Function<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>
-                test(conv1,
-                     conv2,
+                test(matmul1,
+                     matmul2,
                      FuncConfig()
                          .set("aTrans", transa)
                          .set("bTrans", transb));
