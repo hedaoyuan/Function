@@ -1,7 +1,7 @@
 
 ## Benchmark of MatMul
 
-Environment: MI 5, Android 7.0, Snapdragon 820 1.8GHz
+Environment: MI 5, Android 7.0, Snapdragon 820 1.8GHz, gcc 4.9.x
 
 ### Compiled as ARMv8 version
 
