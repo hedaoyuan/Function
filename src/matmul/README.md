@@ -3,7 +3,64 @@
 
 Environment: MI 5, Android 7.0, Snapdragon 820 1.8GHz
 
-### Compiled as ARMv8 version
+### Compiled as ARMv8 version (Android clang version 3.8.256229  (based on LLVM 3.8.256229))
+
+```
+----------------------------------------------------------------------------------------
+Benchmark                                 Time           CPU Iterations UserCounters...
+----------------------------------------------------------------------------------------
+BM_MatMul/Eigen-CPU/32/32/32              8 us          8 us      90285 gflops=7.92848G/s
+BM_MatMul/Eigen-CPU/64/64/64             54 us         53 us      13127 gflops=9.15455G/s
+BM_MatMul/Eigen-CPU/96/96/96            159 us        159 us       4379 gflops=10.3811G/s
+BM_MatMul/Eigen-CPU/128/128/128         431 us        430 us       1629 gflops=9.09041G/s
+BM_MatMul/Eigen-CPU/256/256/256        4030 us       3929 us        180 gflops=7.9531G/s
+BM_MatMul/Eigen-CPU/384/384/384       12203 us      11979 us         60 gflops=8.80458G/s
+BM_MatMul/Eigen-CPU/512/512/512       28209 us      27710 us         25 gflops=9.02203G/s
+BM_MatMul/Eigen-CPU/64/9216/32         4590 us       4510 us        154 gflops=7.79494G/s
+BM_MatMul/Eigen-CPU/128/2304/64        4581 us       4486 us        157 gflops=7.8367G/s
+BM_MatMul/Eigen-CPU/128/2304/128       8637 us       8466 us         84 gflops=8.30511G/s
+BM_MatMul/Eigen-CPU/256/576/128        4621 us       4506 us        156 gflops=7.80189G/s
+BM_MatMul/Eigen-CPU/256/576/256        8500 us       8303 us         86 gflops=8.46804G/s
+BM_MatMul/Eigen-CPU/512/144/256        4792 us       4676 us        151 gflops=7.51842G/s
+BM_MatMul/Eigen-CPU/512/144/512        8635 us       8466 us         86 gflops=8.30562G/s
+BM_MatMul/Eigen-CPU/1024/36/512        4778 us       4717 us        149 gflops=7.4528G/s
+BM_MatMul/Eigen-CPU/1024/36/1024       9458 us       9305 us         82 gflops=7.55675G/s
+BM_MatMul/Eigen-CPU/9/128/256           117 us        117 us       6034 gflops=4.70763G/s
+BM_MatMul/Eigen-CPU/16/64/256            54 us         54 us      13063 gflops=9.12094G/s
+BM_MatMul/Eigen-CPU/48/64/256           145 us        144 us       4857 gflops=10.167G/s
+BM_MatMul/Eigen-CPU/48/96/64             56 us         56 us      12496 gflops=9.80984G/s
+BM_MatMul/Eigen-CPU/48/104/64            63 us         62 us      11246 gflops=9.53638G/s
+BM_MatMul/Eigen-CPU/64/96/64             74 us         73 us       9569 gflops=9.98415G/s
+BM_MatMul/Eigen-CPU/64/104/64            82 us         82 us       8556 gflops=9.68551G/s
+BM_MatMul/Eigen-CPU/128/128/256         878 us        865 us        828 gflops=9.02788G/s
+----------------------------------------------------------------------------------------
+BM_MatMul/Blas-CPU/32/32/32               9 us          9 us      80054 gflops=6.97916G/s
+BM_MatMul/Blas-CPU/64/64/64              49 us         49 us      14178 gflops=9.89889G/s
+BM_MatMul/Blas-CPU/96/96/96             151 us        151 us       4644 gflops=10.9303G/s
+BM_MatMul/Blas-CPU/128/128/128          337 us        335 us       2070 gflops=11.6442G/s
+BM_MatMul/Blas-CPU/256/256/256         3168 us       3119 us        226 gflops=10.0198G/s
+BM_MatMul/Blas-CPU/384/384/384        11792 us      11522 us         59 gflops=9.15345G/s
+BM_MatMul/Blas-CPU/512/512/512        27189 us      26650 us         27 gflops=9.38101G/s
+BM_MatMul/Blas-CPU/64/9216/32          6244 us       6140 us        119 gflops=5.72562G/s
+BM_MatMul/Blas-CPU/128/2304/64         5045 us       4943 us        144 gflops=7.11209G/s
+BM_MatMul/Blas-CPU/128/2304/128        8290 us       8117 us         89 gflops=8.66218G/s
+BM_MatMul/Blas-CPU/256/576/128         4147 us       4061 us        175 gflops=8.65626G/s
+BM_MatMul/Blas-CPU/256/576/256         8709 us       8503 us         86 gflops=8.2695G/s
+BM_MatMul/Blas-CPU/512/144/256         4110 us       4028 us        164 gflops=8.72752G/s
+BM_MatMul/Blas-CPU/512/144/512         7687 us       7540 us         92 gflops=9.32506G/s
+BM_MatMul/Blas-CPU/1024/36/512         4211 us       4144 us        170 gflops=8.48405G/s
+BM_MatMul/Blas-CPU/1024/36/1024        8248 us       8115 us         87 gflops=8.66451G/s
+BM_MatMul/Blas-CPU/9/128/256             67 us         67 us      10492 gflops=8.22528G/s
+BM_MatMul/Blas-CPU/16/64/256             46 us         46 us      15202 gflops=10.6055G/s
+BM_MatMul/Blas-CPU/48/64/256            129 us        129 us       5440 gflops=11.3873G/s
+BM_MatMul/Blas-CPU/48/96/64              52 us         51 us      13630 gflops=10.6976G/s
+BM_MatMul/Blas-CPU/48/104/64             56 us         56 us      12530 gflops=10.6511G/s
+BM_MatMul/Blas-CPU/64/96/64              68 us         68 us      10297 gflops=10.7985G/s
+BM_MatMul/Blas-CPU/64/104/64             74 us         74 us       9473 gflops=10.7586G/s
+BM_MatMul/Blas-CPU/128/128/256          672 us        669 us       1064 gflops=11.6801G/s
+```
+
+### Compiled as ARMv8 version (gcc version 4.9.x)
 
 ```
 ----------------------------------------------------------------------------------------
@@ -60,7 +117,7 @@ BM_MatMul/Blas-CPU/64/104/64             80 us         79 us       8816 gflops=9
 BM_MatMul/Blas-CPU/128/128/256          710 us        708 us        980 gflops=11.0422G/s
 ```
 
-### Compiled as ARMv7 version
+### Compiled as ARMv7 version (gcc version 4.9.x)
 ```
 ----------------------------------------------------------------------------------------
 Benchmark                                 Time           CPU Iterations UserCounters...
