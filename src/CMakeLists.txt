@@ -26,6 +26,7 @@ list(APPEND test_files BufferArgTest.cpp)
 list(APPEND test_files FunctionTest.cpp)
 list(APPEND test_files conv/GemmConvOpTest.cpp)
 list(APPEND test_files conv/DepthwiseConvOpTest.cpp)
+list(APPEND test_files conv/DepthwiseConvOpBenchmark.cpp)
 list(APPEND test_files matmul/MatMulFuncTest.cpp)
 list(APPEND test_files matmul/MatMulBenchmark.cpp)
 
