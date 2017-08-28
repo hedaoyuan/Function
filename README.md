@@ -5,4 +5,6 @@ Mainly to test the performance of the [OpenBlas](https://github.com/xianyi/OpenB
 ### [Matrix Multiplication](https://github.com/hedaoyuan/Function/blob/master/src/matmul/README.md)
 Compare the matrix multiplication performance of Eigen and OpenBlas library.
 
+### [Depthwise Convolution](https://github.com/hedaoyuan/Function/blob/master/src/conv/README.md)
+For the depthwise convolution in mobilenet, the performance of the NeonDepthwiseConv is 7-10 times higher than the GemmConv based on matrix multiplication.
 
