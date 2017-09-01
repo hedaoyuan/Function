@@ -9,6 +9,7 @@ list(APPEND cpp_files conv/GemmConvOp.cpp)
 list(APPEND cpp_files conv/NaiveConvOp.cpp)
 list(APPEND cpp_files conv/Im2ColOp.cpp)
 list(APPEND cpp_files conv/NeonDepthwiseConv.cpp)
+list(APPEND cpp_files conv/NeonDepthwiseConvTranspose.cpp)
 list(APPEND cpp_files matmul/BlasMatMulFunc.cpp)
 list(APPEND cpp_files matmul/EigenMatMulFunc.cpp)
 
