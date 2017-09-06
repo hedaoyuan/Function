@@ -16,7 +16,9 @@ limitations under the License. */
 
 namespace paddle {
 
-void BM_Convolution(benchmark::State& state, const std::string& conv) {
+void BM_Convolution(benchmark::State& state,
+                    const std::string& conv,
+                    bool isTrans) {
   size_t inputChannels = state.range(0);
   size_t outputChannels = state.range(1);
   size_t inputSize = state.range(2);
@@ -25,7 +27,12 @@ void BM_Convolution(benchmark::State& state, const std::string& conv) {
   size_t padding = state.range(5);
   size_t groups = state.range(6);
   size_t batchSize = 1;
-  size_t outputSize = (inputSize - filterSize + 2 * padding + stride) / stride;
+  size_t outputSize = 0;
+  if (!isTrans) {
+    outputSize = (inputSize - filterSize + 2 * padding + stride) / stride;
+  } else {
+    outputSize = (inputSize - 1) * stride + filterSize - 2 * padding;
+  }
 
   std::vector<size_t> paddings = {padding, padding};
   std::vector<size_t> strides = {stride, stride};
@@ -50,7 +57,7 @@ void BM_Convolution(benchmark::State& state, const std::string& conv) {
 }
 
 #define DEPTHWISE_CONVOLUTION(function)                         \
-  BENCHMARK_CAPTURE(BM_Convolution, function, #function)        \
+  BENCHMARK_CAPTURE(BM_Convolution, function, #function, false) \
       ->Args({32, 32, 96, 3, 1, 1, 32})                         \
       ->Args({64, 64, 96, 3, 2, 1, 64})                         \
       ->Args({128, 128, 48, 3, 1, 1, 128})                      \
@@ -68,6 +75,14 @@ void BM_Convolution(benchmark::State& state, const std::string& conv) {
 
 DEPTHWISE_CONVOLUTION(NeonDepthwiseConv-CPU);
 DEPTHWISE_CONVOLUTION(GemmConv-CPU);
+
+#define DEPTHWISE_CONVOLUTION_TRANSPOSE(function)               \
+  BENCHMARK_CAPTURE(BM_Convolution, function, #function, true)  \
+      ->Args({128, 128, 8, 4, 2, 1, 128})                       \
+      ->Unit(benchmark::kMicrosecond);
+
+DEPTHWISE_CONVOLUTION_TRANSPOSE(NeonDepthwiseConvTranspose-CPU);
+// DEPTHWISE_CONVOLUTION_TRANSPOSE(GemmConvGradInput-CPU);
 
 }  // namespace paddle
 
