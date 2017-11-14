@@ -20,6 +20,7 @@
 # The supported variables are listed belows:
 # 
 # ANDROID_STANDALONE_TOOLCHAIN
+# ANDROID_TOOLCHAIN
 # ANDROID_ABI
 # ANDROID_NATIVE_API_LEVEL
 # ANDROID_ARM_MODE
@@ -57,6 +58,9 @@ IF(NOT DEFINED CMAKE_SYSTEM_VERSION AND ANDROID_NATIVE_API_LEVEL)
     ENDIF()
 ENDIF()
 
+IF(NOT DEFINED ANDROID_TOOLCHAIN)
+    SET(ANDROID_TOOLCHAIN clang)
+ENDIF()
 IF(NOT DEFINED ANDROID_ABI)
     SET(ANDROID_ABI "armeabi-v7a")
 ENDIF()
@@ -78,10 +82,11 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
     IF("${CMAKE_VERSION}" VERSION_LESS "3.1.0")
         SET(CMAKE_SYSTEM_NAME "Linux")
     ENDIF()
-    MESSAGE(STATUS "It is recommended to use CMake >= 3.7.0 (current version: "
+    MESSAGE(WARNING "It is recommended to use CMake >= 3.7.0 (current version: "
             "${CMAKE_VERSION}), when cross-compiling for Android.")
 
     IF(ANDROID_STANDALONE_TOOLCHAIN)
+        # Use standalone toolchain
         SET(CMAKE_SYSROOT "${ANDROID_STANDALONE_TOOLCHAIN}/sysroot")
 
         IF(NOT CMAKE_SYSTEM_VERSION)
@@ -96,33 +101,63 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
         ENDIF()
 
         # Toolchain
-        SET(ANDROID_TOOLCHAIN "gcc")
         SET(ANDROID_TOOLCHAIN_ROOT ${ANDROID_STANDALONE_TOOLCHAIN})
+    ELSE(ANDROID_NDK)
+        # TODO: use android ndk
+    ENDIF()
         IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
             SET(ANDROID_TOOLCHAIN_NAME arm-linux-androideabi)
             IF(ANDROID_ABI STREQUAL "armeabi")
                 SET(CMAKE_SYSTEM_PROCESSOR armv5te)
+            SET(ANDROID_CLANG_TRIPLE armv5te-none-linux-androideabi)
             ELSEIF(ANDROID_ABI STREQUAL "armeabi-v7a")
                 SET(CMAKE_SYSTEM_PROCESSOR armv7-a)
-            ENDIF()
+            SET(ANDROID_CLANG_TRIPLE armv7-none-linux-androideabi)
         ENDIF()
-        IF(ANDROID_ABI STREQUAL "arm64-v8a")
+    ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
             SET(ANDROID_TOOLCHAIN_NAME aarch64-linux-android)
             SET(CMAKE_SYSTEM_PROCESSOR aarch64)
+        SET(ANDROID_CLANG_TRIPLE aarch64-none-linux-android)
+    ELSE()
+        MESSAGE(FATAL_ERROR "Invalid Android ABI: ${ANDROID_ABI}.")
         ENDIF()
         SET(ANDROID_TOOLCHAIN_PREFIX "${ANDROID_TOOLCHAIN_ROOT}/bin/${ANDROID_TOOLCHAIN_NAME}-")
+    IF(ANDROID_TOOLCHAIN STREQUAL clang)
+        SET(ANDROID_C_COMPILER_NAME clang)
+        SET(ANDROID_CXX_COMPILER_NAME clang++)
+        SET(CMAKE_C_COMPILER_TARGET   ${ANDROID_CLANG_TRIPLE})
+        SET(CMAKE_CXX_COMPILER_TARGET ${ANDROID_CLANG_TRIPLE})
+    ELSEIF(ANDROID_TOOLCHAIN STREQUAL gcc)
+        SET(ANDROID_C_COMPILER_NAME gcc)
+        SET(ANDROID_CXX_COMPILER_NAME g++)
+    ELSE()
+        MESSAGE(FATAL_ERROR "Invalid Android toolchain: ${ANDROID_TOOLCHAIN}")
     ENDIF()
 
     # C compiler
-    SET(ANDROID_C_COMPILER "${ANDROID_TOOLCHAIN_PREFIX}gcc")
+    IF(NOT CMAKE_C_COMPILER)
+        SET(ANDROID_C_COMPILER "${ANDROID_TOOLCHAIN_PREFIX}${ANDROID_C_COMPILER_NAME}")
+    ELSE()
+        GET_FILENAME_COMPONENT(ANDROID_C_COMPILER ${CMAKE_C_COMPILER} PROGRAM)
+    ENDIF()
+    IF(NOT EXISTS ${ANDROID_C_COMPILER})
+        MESSAGE(FATAL_ERROR "Cannot find C compiler: ${ANDROID_C_COMPILER}")
+    ENDIF()
 
     # CXX compiler
-    SET(ANDROID_CXX_COMPILER "${ANDROID_TOOLCHAIN_PREFIX}g++")
+    IF(NOT CMAKE_CXX_COMPILER)
+        SET(ANDROID_CXX_COMPILER "${ANDROID_TOOLCHAIN_PREFIX}${ANDROID_CXX_COMPILER_NAME}")
+    ELSE()
+        GET_FILENAME_COMPONENT(ANDROID_CXX_COMPILER ${CMAKE_CXX_COMPILER} PROGRAM)
+    ENDIF()
+    IF(NOT EXISTS ${ANDROID_CXX_COMPILER})
+        MESSAGE(FATAL_ERROR "Cannot find CXX compiler: ${ANDROID_CXX_COMPILER}")
+    ENDIF()
     SET(CMAKE_C_COMPILER ${ANDROID_C_COMPILER} CACHE PATH "C compiler" FORCE)
     SET(CMAKE_CXX_COMPILER ${ANDROID_CXX_COMPILER} CACHE PATH "CXX compiler" FORCE)
 
     # Toolchain and ABI specific flags.
-    SET(ANDROID_COMPILER_FLAGS "-ffunction-sections -fdata-sections -finline-limit=64")
+    SET(ANDROID_COMPILER_FLAGS "-ffunction-sections -fdata-sections")
     SET(ANDROID_LINKER_FLAGS "-Wl,--gc-sections")
 
     IF(ANDROID_ABI STREQUAL "armeabi")
@@ -130,8 +165,7 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
              -march=armv5te
              -mtune=xscale
              -msoft-float)
-    ENDIF()
-    IF(ANDROID_ABI STREQUAL "armeabi-v7a")
+    ELSEIF(ANDROID_ABI STREQUAL "armeabi-v7a")
         LIST(APPEND ANDROID_COMPILER_FLAGS
              -march=armv7-a
              -mfloat-abi=softfp)
@@ -141,6 +175,8 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
             LIST(APPEND ANDROID_COMPILER_FLAGS -mfpu=vfpv3-d16)
         ENDIF()
         LIST(APPEND ANDROID_LINKER_FLAGS -Wl,--fix-cortex-a8)
+    ELSEIF(ANDROID_ABI STREQUAL "arm64-v8a")
+        LIST(APPEND ANDROID_COMPILER_FLAGS -march=armv8-a)
     ENDIF()
 
     IF(ANDROID_ABI MATCHES "^armeabi(-v7a)?$")
@@ -149,10 +185,18 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
         ELSE()
             LIST(APPEND ANDROID_COMPILER_FLAGS -mthumb)
         ENDIF()
+        IF(ANDROID_TOOLCHAIN STREQUAL clang)
+            # Disable integrated-as for better compatibility.
+            LIST(APPEND ANDROID_COMPILER_FLAGS -fno-integrated-as)
+        ENDIF()
     ENDIF()
 
-    IF(ANDROID_ABI STREQUAL "arm64-v8a")
-        LIST(APPEND ANDROID_COMPILER_FLAGS -march=armv8-a)
+    IF(ANDROID_TOOLCHAIN STREQUAL clang)
+        # CMake automatically forwards all compiler flags to the linker,
+        # and clang doesn't like having -Wa flags being used for linking.
+        # To prevent CMake from doing this would require meddling with
+        # the CMAKE_<LANG>_COMPILE_OBJECT rules, which would get quite messy.
+        LIST(APPEND ANDROID_LINKER_FLAGS -Qunused-arguments)
     ENDIF()
 
     STRING(REPLACE ";" " " ANDROID_COMPILER_FLAGS "${ANDROID_COMPILER_FLAGS}")
@@ -166,7 +210,8 @@ IF("${CMAKE_VERSION}" VERSION_LESS "3.7.0")
         CACHE STRING "shared linker flags")
 
     SET(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-    SET(CMAKE_EXE_LINKER_FLAGS "-pie -fPIE ${ANDROID_LINKER_FLAGS} ${CMAKE_EXE_LINKER_FLAGS}")
+    SET(CMAKE_EXE_LINKER_FLAGS "-pie -fPIE ${ANDROID_LINKER_FLAGS} ${CMAKE_EXE_LINKER_FLAGS}"
+        CACHE STRING "executable linker flags")
 
     MESSAGE(STATUS "Android: Targeting API '${CMAKE_SYSTEM_VERSION}' "
             "with architecture '${ANDROID_ARM_MODE_NAME}', "
