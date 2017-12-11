@@ -14,7 +14,7 @@ list(APPEND cpp_files matmul/BlasMatMulFunc.cpp)
 list(APPEND cpp_files matmul/EigenMatMulFunc.cpp)
 
 if(USE_NNPACK)
-  list(APPEND cpp_files conv/NNPACKConvFunc.cpp)
+  list(APPEND cpp_files conv/NNPACKConvOp.cpp)
 endif()
 
 # function library
@@ -30,6 +30,9 @@ list(APPEND test_files conv/DepthwiseConvOpTest.cpp)
 list(APPEND test_files conv/DepthwiseConvOpBenchmark.cpp)
 list(APPEND test_files matmul/MatMulFuncTest.cpp)
 list(APPEND test_files matmul/MatMulBenchmark.cpp)
+if(USE_NNPACK)
+  list(APPEND test_files conv/NNPACKConvOpTest.cpp)
+endif()
 
 foreach(test_file ${test_files})
   get_filename_component(test ${test_file} NAME_WE)
