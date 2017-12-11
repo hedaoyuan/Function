@@ -15,8 +15,6 @@ find_package(Threads REQUIRED)
 set(THIRD_PARTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/third_party"
     CACHE STRING "A path setting third party libraries download & build directories.")
 
-option(USE_NNPACK   "Compile function with NNPACK library" OFF)
-
 add_definitions(-DPADDLE_ONLY_CPU)
 
 if(NOT CMAKE_BUILD_TYPE)
@@ -26,6 +24,7 @@ endif()
 include(dependencies)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -fPIC")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -s")
 if (NOT ANDROID)
   list(APPEND DEPENDENCY_LIBS ${CMAKE_THREAD_LIBS_INIT} "rt")
 endif()
