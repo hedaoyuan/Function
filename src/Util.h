@@ -50,7 +50,7 @@ void runInitFunctions();
 /**
  * Initialize logging and parse commandline
  */
-void initMain(int argc, char** argv);
+void initMain(int& argc, char** argv);
 
 /**
  * Register a function, the function will be called in initMain(). Functions

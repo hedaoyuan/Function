@@ -33,6 +33,7 @@ list(APPEND test_files matmul/MatMulFuncTest.cpp)
 list(APPEND test_files matmul/MatMulBenchmark.cpp)
 if(USE_NNPACK)
   list(APPEND test_files conv/NNPACKConvOpTest.cpp)
+  list(APPEND test_files conv/NNPACKConvOpBenchmark.cpp)
 endif()
 
 foreach(test_file ${test_files})
