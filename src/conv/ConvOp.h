@@ -103,6 +103,27 @@ public:
     }
   }
 
+  int64_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    // Only for forward calculation
+    const TensorShape& input = inputs[0].shape();
+    const TensorShape& filter = inputs[1].shape();
+    const TensorShape& output = outputs[0].shape();
+
+    size_t batchSize = input[0];
+    size_t inputChannels = input[1];
+    size_t filterHeight = getFilterHeight(filter);
+    size_t filterWidth = getFilterWidth(filter);
+    size_t outputChannels = output[1];
+    size_t outputHeight = output[2];
+    size_t outputWidth = output[3];
+
+    // number of floating-point operations
+    int64_t ops = batchSize * 2 * inputChannels * outputChannels
+      * outputHeight * outputWidth * filterHeight * filterWidth / groups_;
+
+    return ops;
+  }
+
 protected:
   size_t getFilterHeight(const TensorShape& filter) const {
     return filter[filter.ndims() - 2];

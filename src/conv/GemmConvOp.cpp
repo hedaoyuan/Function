@@ -35,26 +35,6 @@ public:
     checkShape(input, filter, output);
   }
 
-  int64_t ops(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    const TensorShape& input = inputs[0].shape();
-    const TensorShape& filter = inputs[1].shape();
-    const TensorShape& output = outputs[0].shape();
-
-    size_t batchSize = input[0];
-    size_t inputChannels = input[1];
-    size_t filterHeight = getFilterHeight(filter);
-    size_t filterWidth = getFilterWidth(filter);
-    size_t outputChannels = output[1];
-    size_t outputHeight = output[2];
-    size_t outputWidth = output[3];
-
-    // number of floating-point operations
-    int64_t ops = batchSize * 2 * inputChannels * outputChannels
-      * outputHeight * outputWidth * filterHeight * filterWidth;
-
-    return ops;
-  }
-
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
