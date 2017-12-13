@@ -16,9 +16,9 @@ limitations under the License. */
 
 namespace paddle {
 
-CONVOLUTION_BENCHMARK_I(GemmConv-CPU, auto);
-CONVOLUTION_BENCHMARK_R(GemmConv-CPU, auto);
-CONVOLUTION_BENCHMARK_P(GemmConv-CPU, auto);
+CONVOLUTION_BENCHMARK_I(GemmConv-CPU);
+CONVOLUTION_BENCHMARK_R(GemmConv-CPU);
+CONVOLUTION_BENCHMARK_P(GemmConv-CPU);
 
 }  // namespace paddle
 

@@ -50,7 +50,7 @@ void BM_Convolution(benchmark::State& state,
  * Args:
  *  input_channels, output_channels, input_size, filter_size, stride, padding
  */
-#define CONVOLUTION_BENCHMARK_I(function, algo)                         \
+#define CONVOLUTION_BENCHMARK_I(function, algo...)                      \
   BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
       ->Args({3, 32, 192, 3, 2, 1})                                     \
       ->Args({3, 32, 224, 3, 2, 1})                                     \
@@ -58,7 +58,7 @@ void BM_Convolution(benchmark::State& state,
       ->Args({3, 64, 108, 3, 2, 1})                                     \
       ->Unit(benchmark::kMicrosecond);
 
-#define CONVOLUTION_BENCHMARK_R(function, algo)                         \
+#define CONVOLUTION_BENCHMARK_R(function, algo...)                      \
   BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
       ->Args({64, 64, 54, 3, 1, 1})                                     \
       ->Args({64, 128, 54, 3, 1, 1})                                    \
@@ -69,7 +69,7 @@ void BM_Convolution(benchmark::State& state,
       ->Args({512, 512, 7, 3, 1, 1})                                    \
       ->Unit(benchmark::kMicrosecond);
 
-#define CONVOLUTION_BENCHMARK_P(function, algo)                         \
+#define CONVOLUTION_BENCHMARK_P(function, algo...)                      \
   BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
       ->Args({64, 128, 54, 1, 1, 0})                                    \
       ->Args({128, 256, 27, 1, 1, 0})                                   \
