@@ -15,6 +15,7 @@ limitations under the License. */
 #include "ConvOp.h"
 #include "GemmFunctor.h"
 #include "Im2Col.h"
+#include <cmath>
 
 namespace paddle {
 
@@ -73,13 +74,20 @@ public:
     TensorShape colShape;
     real* colData = NULL;
 
+    size_t colHeight = inputChannels / groups_ * filterHeight * filterWidth;
+    size_t colWidth = outputHeight * outputWidth;
+    // Max col matrix height 256, Max col matrix width 1024
+    size_t stepColHeight = std::min(colHeight, (size_t)256);
+    size_t stepColWidth = std::min(colWidth, (size_t)1024);
+
     if (needIm2col) {
       colShape = TensorShape({inputChannels / groups_,
                               filterHeight,
                               filterWidth,
                               outputHeight,
                               outputWidth});
-      resizeBuffer<Device>(colShape.getElements());
+
+      resizeBuffer<Device>(stepColHeight * stepColWidth * sizeof(real));
       colData = reinterpret_cast<real*>(memory_->getBuf());
     }
 
@@ -90,36 +98,66 @@ public:
         (outputChannels / groups_) * outputHeight * outputWidth;
     size_t filterOffset = filter.getElements() / groups_;
 
+    int nStride = colWidth;
+    int kStride = colHeight;
     for (size_t i = 0; i < batchSize; i++) {
       for (size_t g = 0; g < groups_; g++) {
         if (needIm2col) {
-          im2col(inputData + g * inputOffset,
-                 imShape,
-                 colData,
-                 colShape,
-                 strideH(),
-                 strideW(),
-                 paddingH(),
-                 paddingW());
+          real beta_ = beta;
+          for (size_t colHeightStart = 0; colHeightStart < colHeight; colHeightStart += stepColHeight) {
+            for (size_t colWidthStart = 0; colWidthStart < colWidth; colWidthStart += stepColWidth) {
+              int N = std::min(colWidth - colWidthStart, stepColWidth);
+              int K = std::min(colHeight - colHeightStart, stepColHeight);
+              // im2col
+              im2col(inputData + g * inputOffset,
+                     imShape,
+                     colData,
+                     colShape,
+                     strideH(),
+                     strideW(),
+                     paddingH(),
+                     paddingW(),
+                     colHeightStart,
+                     K,
+                     colWidthStart,
+                     N);
+
+              // gemm
+              int M = outputChannels / groups_;
+              gemm(CblasNoTrans,
+                   CblasNoTrans,
+                   M,
+                   N,
+                   K,
+                   1.0f,
+                   filterData + g * filterOffset + colHeightStart,
+                   kStride,
+                   colData,
+                   N,
+                   beta_,
+                   outputData + g * outputOffset + colWidthStart,
+                   nStride);
+            }
+            beta_ = 1.0;
+          }
         } else {
-          colData = inputData + g * inputOffset;
+          int M = outputChannels / groups_;
+          int N = outputHeight * outputWidth;
+          int K = inputChannels / groups_ * filterHeight * filterWidth;
+          gemm(CblasNoTrans,
+               CblasNoTrans,
+               M,
+               N,
+               K,
+               1.0f,
+               filterData + g * filterOffset,
+               K,
+               inputData + g * inputOffset,
+               N,
+               beta,
+               outputData + g * outputOffset,
+               N);
         }
-        int M = outputChannels / groups_;
-        int N = outputHeight * outputWidth;
-        int K = inputChannels / groups_ * filterHeight * filterWidth;
-        gemm(CblasNoTrans,
-             CblasNoTrans,
-             M,
-             N,
-             K,
-             1.0f,
-             filterData + g * filterOffset,
-             K,
-             colData,
-             N,
-             beta,
-             outputData + g * outputOffset,
-             N);
       }
       inputData += inputChannels * inputHeight * inputWidth;
       outputData += outputChannels * outputHeight * outputWidth;

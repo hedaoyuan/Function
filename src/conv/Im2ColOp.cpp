@@ -31,7 +31,11 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth) {
+                  int paddingWidth,
+                  int colHeightStart,
+                  int colHeightSize,
+                  int colWidthStart,
+                  int colWidthSize) {
     int inputChannels = imShape[0];
     int inputHeight = imShape[1];
     int inputWidth = imShape[2];
@@ -39,27 +43,28 @@ public:
     int filterWidth = colShape[2];
     int outputHeight = colShape[3];
     int outputWidth = colShape[4];
-    int channelsCol = inputChannels * filterHeight * filterWidth;
 
-    for (int c = 0; c < channelsCol; ++c) {
-      int wOffset = c % filterWidth;
-      int hOffset = (c / filterWidth) % filterHeight;
-      int c_im = c / filterWidth / filterHeight;
-      for (int h = 0; h < outputHeight; ++h) {
-        for (int w = 0; w < outputWidth; ++w) {
-          int imRowIdx = h * strideHeight + hOffset;
-          int imColIdx = w * strideWidth + wOffset;
-          if ((imRowIdx - paddingHeight) < 0 ||
-              (imRowIdx - paddingHeight) >= inputHeight ||
-              (imColIdx - paddingWidth) < 0 ||
-              (imColIdx - paddingWidth) >= inputWidth) {
-            colData[(c * outputHeight + h) * outputWidth + w] = T(0);
-          } else {
-            imRowIdx += c_im * inputHeight - paddingHeight;
-            imColIdx -= paddingWidth;
-            colData[(c * outputHeight + h) * outputWidth + w] =
-                imData[imRowIdx * inputWidth + imColIdx];
-          }
+    for (int colh = 0; colh < colHeightSize; colh++) {
+      int wOffset = (colHeightStart + colh) % filterWidth;
+      int hOffset = ((colHeightStart + colh) / filterWidth) % filterHeight;
+      int c_im = (colHeightStart + colh) / filterWidth / filterHeight;
+
+      for (int colw = 0; colw < colWidthSize; colw++) {
+        int h = (colWidthStart + colw) / outputWidth;
+        int w = (colWidthStart + colw) % outputWidth;
+
+        int imRowIdx = h * strideHeight + hOffset;
+        int imColIdx = w * strideWidth + wOffset;
+        if ((imRowIdx - paddingHeight) < 0 ||
+            (imRowIdx - paddingHeight) >= inputHeight ||
+            (imColIdx - paddingWidth) < 0 ||
+            (imColIdx - paddingWidth) >= inputWidth) {
+          colData[colh * colWidthSize + colw] = T(0);
+        } else {
+          imRowIdx += c_im * inputHeight - paddingHeight;
+          imColIdx -= paddingWidth;
+          colData[colh * colWidthSize + colw] =
+              imData[imRowIdx * inputWidth + imColIdx];
         }
       }
     }

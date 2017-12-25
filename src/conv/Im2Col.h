@@ -77,7 +77,11 @@ public:
                   int strideHeight,
                   int strideWidth,
                   int paddingHeight,
-                  int paddingWidth);
+                  int paddingWidth,
+                  int colHeightStart,
+                  int colHeightSize,
+                  int colWidthStart,
+                  int colWidthSize);
 };
 
 template <ColFormat Format, DeviceType Device, class T>
