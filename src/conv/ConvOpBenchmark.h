@@ -76,4 +76,11 @@ void BM_Convolution(benchmark::State& state,
       ->Args({256, 512, 14, 1, 1, 0})                                   \
       ->Unit(benchmark::kMicrosecond);
 
+#define CONVOLUTION_BENCHMARK_D(function, algo...)                      \
+  BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
+      ->Args({3, 32, 1500, 7, 4, 3})                                    \
+      ->Args({16, 32, 375, 3, 1, 1})                                    \
+      ->Args({16, 32, 188, 3, 1, 1})                                    \
+      ->Unit(benchmark::kMicrosecond);
+
 }  // namespace paddle
