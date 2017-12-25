@@ -19,6 +19,7 @@ namespace paddle {
 CONVOLUTION_BENCHMARK_I(GemmConv-CPU);
 CONVOLUTION_BENCHMARK_R(GemmConv-CPU);
 CONVOLUTION_BENCHMARK_P(GemmConv-CPU);
+CONVOLUTION_BENCHMARK_D(GemmConv-CPU);
 
 }  // namespace paddle
 

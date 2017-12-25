@@ -17,9 +17,12 @@ limitations under the License. */
 
 namespace paddle {
 
-TEST(GemmConv, NaiveConv) {
+TEST(GemmConv, Forward1) {
   Convolution<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>(
       "NaiveConv-CPU", "GemmConv-CPU", forward);
+}
+
+TEST(GemmConv, Forward2) {
   Convolution2<DEVICE_TYPE_CPU, DEVICE_TYPE_CPU>(
       "NaiveConv-CPU", "GemmConv-CPU", forward);
 }
@@ -30,20 +33,6 @@ TEST(GemmConv, Forward) {
       "GemmConv-CPU", "GemmConv-GPU", forward);
   Convolution2<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
       "GemmConv-CPU", "GemmConv-GPU", forward);
-}
-
-TEST(GemmConv, BackwardInput) {
-  Convolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
-      "GemmConvGradInput-CPU", "GemmConvGradInput-GPU", backward_input);
-  Convolution2<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
-      "GemmConvGradInput-CPU", "GemmConvGradInput-GPU", backward_input);
-}
-
-TEST(GemmConv, BackwardFilter) {
-  Convolution<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
-      "GemmConvGradFilter-CPU", "GemmConvGradFilter-GPU", backward_filter);
-  Convolution2<DEVICE_TYPE_CPU, DEVICE_TYPE_GPU>(
-      "GemmConvGradFilter-CPU", "GemmConvGradFilter-GPU", backward_filter);
 }
 #endif
 
