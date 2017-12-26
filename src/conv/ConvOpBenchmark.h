@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include "FunctionBenchmark.h"
+#include "Stat.h"
 
 namespace paddle {
 
@@ -44,6 +45,9 @@ void BM_Convolution(benchmark::State& state,
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
   test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
   test.run(state);
+  globalStat.setThreadInfo(true);
+  globalStat.printAllStatus();
+  globalStat.reset();
 }
 
 /**

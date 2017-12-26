@@ -16,6 +16,7 @@ limitations under the License. */
 #include "GemmFunctor.h"
 #include "Im2Col.h"
 #include <cmath>
+#include "Stat.h"
 
 namespace paddle {
 
@@ -37,6 +38,7 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
+    REGISTER_TIMER_INFO("GemmConv", "GemmConv");
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
     check(inputs, outputs);
@@ -109,6 +111,8 @@ public:
               int N = std::min(colWidth - colWidthStart, stepColWidth);
               int K = std::min(colHeight - colHeightStart, stepColHeight);
               // im2col
+              {
+              REGISTER_TIMER_INFO("im2col", "GemmConv");
               im2col(inputData + g * inputOffset,
                      imShape,
                      colData,
@@ -121,8 +125,11 @@ public:
                      K,
                      colWidthStart,
                      N);
+              }
 
               // gemm
+              {
+              REGISTER_TIMER_INFO("gemm", "GemmConv");
               int M = outputChannels / groups_;
               gemm(CblasNoTrans,
                    CblasNoTrans,
@@ -137,6 +144,7 @@ public:
                    beta_,
                    outputData + g * outputOffset + colWidthStart,
                    nStride);
+              }
             }
             beta_ = 1.0;
           }
