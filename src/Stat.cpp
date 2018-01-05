@@ -22,91 +22,54 @@ namespace paddle {
 StatSet globalStat("GlobalStatInfo");
 
 void Stat::addSample(uint64_t value) {
-  StatInfo* statInfo = statInfo_.get(false);
-  if (!statInfo) {
-    statInfo = new StatInfo(this);
-    statInfo_.set(statInfo);
-    std::lock_guard<std::mutex> guard(lock_);
-    threadLocalBuf_.push_back({statInfo, getTID()});
+  if (value > statInfo_.max_) {
+    statInfo_.max_ = value;
   }
-  if (value > statInfo->max_) {
-    statInfo->max_ = value;
+  if (value < statInfo_.min_) {
+    statInfo_.min_ = value;
   }
-  if (value < statInfo->min_) {
-    statInfo->min_ = value;
-  }
-  statInfo->total_ += value;
-  statInfo->count_++;
-}
-
-void Stat::mergeThreadStat(StatInfo& allThreadStat) {
-  allThreadStat = destructStat_;
-  for (auto& buf : threadLocalBuf_) {
-    if (buf.first->max_ > allThreadStat.max_) {
-      allThreadStat.max_ = buf.first->max_;
-    }
-    if (buf.first->min_ < allThreadStat.min_) {
-      allThreadStat.min_ = buf.first->min_;
-    }
-    allThreadStat.total_ += buf.first->total_;
-    allThreadStat.count_ += buf.first->count_;
-  }
+  statInfo_.total_ += value;
+  statInfo_.count_++;
 }
 
 void Stat::reset() {
-  std::lock_guard<std::mutex> guard(lock_);
-  for (auto& buf : threadLocalBuf_) {
-    buf.first->reset();
-  }
+  statInfo_.reset();
 }
 
 std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
-  std::lock_guard<std::mutex> guard(const_cast<Stat&>(stat).lock_);
-  auto showStat = [&](const StatInfo* info, pid_t tid, bool isFirst = true) {
-    uint64_t average = 0;
-    if (info->count_ > 0) {
-      outPut << std::setfill(' ') << std::left;
-      if (!isFirst) {
-        outPut << std::setw(42) << " ";
-      }
-      average = info->total_ / info->count_;
-      outPut << "Stat=" << std::setw(30) << stat.getName();
-      if (tid) {
-        outPut << " TID=" << std::setw(6) << tid;
-      }
-      outPut << " total=" << std::setw(10) << info->total_ * 0.001
-             << " avg=" << std::setw(10) << average * 0.001
-             << " max=" << std::setw(10) << info->max_ * 0.001
-             << " min=" << std::setw(10) << info->min_ * 0.001
-             << " count=" << std::setw(10) << info->count_ << std::endl;
+  const StatInfo& info = stat.getStatInfo();
+
+  uint64_t average = 0;
+  double ops = stat.getOps();
+  if (info.count_ > 0) {
+    outPut << std::setfill(' ') << std::left;
+    average = info.total_ / info.count_;
+    outPut << "Stat=" << std::setw(30) << stat.getName();
+
+    if (ops > 0) {
+      double gflops = ops / average / 1000;
+      outPut << " gflops=" << std::setw(10) << gflops;
     }
-  };
-  if (!stat.getThreadInfo()) {
-    StatInfo infoVarTmp;
-    const_cast<Stat&>(stat).mergeThreadStat(infoVarTmp);
-    showStat(&infoVarTmp, 0);
-  } else {
-    bool isFirst = true;
-    for (auto& buf : stat.threadLocalBuf_) {
-      showStat(buf.first, buf.second, isFirst);
-      if (isFirst) isFirst = false;
-    }
-    showStat(&stat.destructStat_, 0);
+    outPut << " total=" << std::setw(10) << info.total_ * 0.001
+           << " avg=" << std::setw(10) << average * 0.001
+           << " max=" << std::setw(10) << info.max_ * 0.001
+           << " min=" << std::setw(10) << info.min_ * 0.001
+           << " count=" << std::setw(10) << info.count_ << std::endl;
   }
 
   return outPut;
 }
 
 void StatSet::printAllStatus() {
-#ifndef PADDLE_DISABLE_TIMER
   ReadLockGuard guard(lock_);
   LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
             << "======= StatSet: [" << name_ << "] status ======" << std::endl;
   for (auto& stat : statSet_) {
-    LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
-              << *(stat.second);
+    if (stat.second->getStatInfo().count_ > 0) {
+      LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
+                << *(stat.second);
+    }
   }
-#endif
   LOG(INFO) << std::setiosflags(std::ios::left)
             << "--------------------------------------------------"
             << std::endl;
@@ -118,27 +81,4 @@ void StatSet::reset(bool clearRawData) {
     stat.second->reset();
   }
 }
-
-void StatSet::setThreadInfo(const std::string& name, bool flag) {
-  ReadLockGuard guard(lock_);
-  auto iter = statSet_.find(name);
-  CHECK(iter != statSet_.end()) << name << " is not registed in " << name_;
-  iter->second->setThreadInfo(flag);
-}
-
-StatInfo::~StatInfo() {
-  if (stat_) {
-    std::lock_guard<std::mutex> guard(stat_->lock_);
-    if (stat_->destructStat_.max_ < this->max_) {
-      stat_->destructStat_.max_ = this->max_;
-    }
-    if (stat_->destructStat_.min_ > this->min_) {
-      stat_->destructStat_.min_ = this->min_;
-    }
-    stat_->destructStat_.total_ += this->total_;
-    stat_->destructStat_.count_ += this->count_;
-    stat_->threadLocalBuf_.remove({this, getTID()});
-  }
-}
-
 }  // namespace paddle

@@ -38,7 +38,7 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    REGISTER_TIMER_INFO("GemmConv", "GemmConv");
+    REGISTER_TIMER_INFO("GemmConv", ops(inputs, outputs));
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
     check(inputs, outputs);
@@ -112,7 +112,7 @@ public:
               int K = std::min(colHeight - colHeightStart, stepColHeight);
               // im2col
               {
-              REGISTER_TIMER_INFO("im2col", "GemmConv");
+              REGISTER_TIMER_INFO("im2col");
               im2col(inputData + g * inputOffset,
                      imShape,
                      colData,
@@ -129,7 +129,7 @@ public:
 
               // gemm
               {
-              REGISTER_TIMER_INFO("gemm", "GemmConv");
+              REGISTER_TIMER_INFO("gemm");
               int M = outputChannels / groups_;
               gemm(CblasNoTrans,
                    CblasNoTrans,

@@ -23,17 +23,31 @@ limitations under the License. */
 #include <string>
 #include <unordered_map>
 #include <glog/logging.h>
+#include <sys/syscall.h>
 
 #include "Locks.h"
-#include "ThreadLocal.h"
 
 namespace paddle {
 
 class Stat;
 
+inline pid_t getTID() {
+  pid_t tid = syscall(__NR_gettid);
+  CHECK_NE((int)tid, -1);
+  return tid;
+}
+
+template <typename T>
+std::string to_string(T value)
+{
+    std::ostringstream os ;
+    os << value ;
+    return os.str() ;
+}
+
 class StatInfo {
 public:
-  explicit StatInfo(Stat* stat = nullptr) : stat_(stat) {
+  explicit StatInfo() {
     total_ = 0;
     max_ = 0;
     count_ = 0;
@@ -47,9 +61,8 @@ public:
     min_ = UINT64_MAX;
   }
 
-  ~StatInfo();
+  ~StatInfo() {}
 
-  Stat* stat_;
   uint64_t total_;
   uint64_t max_;
   uint64_t count_;
@@ -66,30 +79,20 @@ public:
 
   void printAllStatus();
 
-  StatPtr getStat(const std::string& name) {
+  StatPtr getStat(const std::string& name, pid_t tid = 0, double flops = 0) {
+    std::string statName =
+      name + "." + to_string(tid) + "." + to_string(flops);
     {
       ReadLockGuard guard(lock_);
-      auto it = statSet_.find(name);
+      auto it = statSet_.find(statName);
       if (it != statSet_.end()) {
         return it->second;
       }
     }
-    StatPtr stat = std::make_shared<Stat>(name);
+    StatPtr stat = std::make_shared<Stat>(statName, tid, flops);
     std::lock_guard<RWLock> guard(lock_);
-    auto ret = statSet_.insert(std::make_pair(name, stat));
+    auto ret = statSet_.insert(std::make_pair(statName, stat));
     return ret.first->second;
-  }
-
-  // true for showing stats for each thread
-  // false for showing stats aggragated over threads
-  void setThreadInfo(const std::string& name, bool flag);
-
-  // true for showing stats for each thread
-  // false for showing stats aggragated over threads
-  void setThreadInfo(bool flag) {
-    for (auto& iter : statSet_) {
-      setThreadInfo(iter.first, flag);
-    }
   }
 
   // reset the counters for all stats
@@ -107,48 +110,28 @@ private:
 
 extern StatSet globalStat;
 
-inline pid_t getTID() {
-  pid_t tid = syscall(__NR_gettid);
-  CHECK_NE((int)tid, -1);
-  return tid;
-}
-
 /*@brief : a simple stat*/
 class Stat {
 public:
-  explicit Stat(const std::string& statName)
-      : destructStat_(nullptr), name_(statName), openThreadInfo_(false) {}
+  explicit Stat(const std::string& statName, pid_t tid = 0, double flops = 0)
+      : name_(statName), tid_(tid), flops_(flops) {}
   ~Stat() {}
-
-  typedef std::list<std::pair<StatInfo*, pid_t>> ThreadLocalBuf;
 
   const std::string& getName() const { return name_; }
 
   void addSample(uint64_t value);
 
-  // clear all stats
+  const StatInfo& getStatInfo() const { return statInfo_; };
+
+  double getOps() const { return flops_; }
+
   void reset();
 
-  friend std::ostream& operator<<(std::ostream& outPut, const Stat& stat);
-
-  /*  Set operator << whether to print thread info.
-   *  If openThreadInfo_ == true, then print, else print merge thread info.
-   */
-  void setThreadInfo(bool flag) { openThreadInfo_ = flag; }
-
-  bool getThreadInfo() const { return openThreadInfo_; }
-
-  friend class StatInfo;
-
 private:
-  void mergeThreadStat(StatInfo& allThreadStat);
-
-  std::mutex lock_;
-  ThreadLocalBuf threadLocalBuf_;
-  StatInfo destructStat_;
-  ThreadLocal<StatInfo> statInfo_;
   const std::string name_;
-  bool openThreadInfo_;
+  pid_t tid_;
+  double flops_;
+  StatInfo statInfo_;
 };
 
 inline uint64_t nowInMicroSec() {
@@ -214,14 +197,15 @@ private:
 
 #ifdef PADDLE_DISABLE_TIMER
 
-#define REGISTER_TIMER_INFO(statName, info)
+#define REGISTER_TIMER_INFO(statName)
 
 #else
 
-#define REGISTER_TIMER_INFO(statName, info)                                 \
-  static ::paddle::StatPtr __stat = ::paddle::globalStat.getStat(statName); \
+#define REGISTER_TIMER_INFO(statName, ...)                                  \
+  ::paddle::StatPtr __stat =                                                \
+      ::paddle::globalStat.getStat(statName, getTID(), ##__VA_ARGS__);      \
   ::paddle::TimerOnce __timerOnce(                                          \
-      __stat.get(), info, 10 * 1000000LU /*threshold*/);
+      __stat.get(), statName, 10 * 1000000LU /*threshold*/);
 
 #endif  // DISABLE_TIMER
 
