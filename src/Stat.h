@@ -38,7 +38,7 @@ inline pid_t getTID() {
 }
 
 template <typename T>
-std::string to_string(T value)
+inline std::string to_string(T value)
 {
     std::ostringstream os ;
     os << value ;
@@ -134,65 +134,25 @@ private:
   StatInfo statInfo_;
 };
 
-inline uint64_t nowInMicroSec() {
-  timeval tvTime;
-  (void)gettimeofday(&tvTime, NULL);
-  return tvTime.tv_sec * 1000000LU + tvTime.tv_usec;
-}
-
-/**
- * A simple help class to measure time interval
- */
-class Timer {
-public:
-  explicit Timer(bool autoStart = true) : total_(0), startStamp_(0) {
-    if (autoStart) {
-      start();
-    }
-  }
-  void start() { startStamp_ = nowInMicroSec(); }
-  void setStartStamp(uint64_t startStamp) { startStamp_ = startStamp; }
-  uint64_t stop() {
-    total_ += nowInMicroSec() - startStamp_;
-    return total_;
-  }
-
-  uint64_t get() const { return total_; }
-
-  void reset() { total_ = 0; }
-
-protected:
-  uint64_t total_;
-  uint64_t startStamp_;
-};
-
 class TimerOnce {
 public:
-  TimerOnce(Stat* stat,
-            const char* info = "",
-            uint64_t threshold = -1,
-            bool autoStart = true,
-            uint64_t startStamp = 0)
-      : stat_(stat), info_(info), timer_(autoStart), threshold_(threshold) {
-    if (!autoStart) {
-      timer_.setStartStamp(startStamp);
-    }
+  TimerOnce(Stat* stat) : stat_(stat) {
+    startStamp_ = nowInMicroSec();
   }
   ~TimerOnce() {
-    uint64_t span = timer_.stop();
-    if (span >= threshold_) {
-      LOG(INFO) << "Stat: [" << stat_->getName() << "] " << info_
-                << " [Span:" << span / 1000 << "ms" << span % 1000 << "us"
-                << "] ";
-    }
-    stat_->addSample(span);
+    uint64_t total = nowInMicroSec() - startStamp_;
+    stat_->addSample(total);
+  }
+
+  inline uint64_t nowInMicroSec() {
+    timeval tvTime;
+    (void)gettimeofday(&tvTime, NULL);
+    return tvTime.tv_sec * 1000000LU + tvTime.tv_usec;
   }
 
 private:
   Stat* stat_;
-  const char* info_;
-  Timer timer_;
-  uint64_t threshold_;
+  uint64_t startStamp_;
 };
 
 #ifdef PADDLE_DISABLE_TIMER
@@ -204,8 +164,7 @@ private:
 #define REGISTER_TIMER_INFO(statName, ...)                                  \
   ::paddle::StatPtr __stat =                                                \
       ::paddle::globalStat.getStat(statName, getTID(), ##__VA_ARGS__);      \
-  ::paddle::TimerOnce __timerOnce(                                          \
-      __stat.get(), statName, 10 * 1000000LU /*threshold*/);
+  ::paddle::TimerOnce __timerOnce(__stat.get());
 
 #endif  // DISABLE_TIMER
 
