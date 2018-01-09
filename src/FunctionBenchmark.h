@@ -22,8 +22,27 @@ limitations under the License. */
 #include "FunctionTest.h"
 #include "MemoryHandle.h"
 #include "benchmark/benchmark.h"
+#include "Stat.h"
 
 namespace paddle {
+
+class State {
+public:
+  State(const std::vector<int>& ranges) : range_(ranges) {
+    for (auto i : ranges) {
+      name_ += "/" + to_string(i);
+    }
+  }
+
+  inline int range(std::size_t pos = 0) const {
+    assert(range_.size() > pos);
+    return range_[pos];
+  }
+
+  std::string name_;
+private:
+  std::vector<int> range_;
+};
 
 template <class Allocator>
 class FunctionBenchmark {
@@ -57,7 +76,7 @@ public:
                                     ASSIGN_TO));
   }
 
-  void run(benchmark::State& state) {
+  void run(State& state) {
     // prepare arguments
     Uniform<float> uniform(0.001, 1);
     for (size_t i = 0; i < funcInputs_.size(); i++) {
@@ -74,13 +93,17 @@ public:
     }
 
     function_->calc(inArgs, outArgs);
+    globalStat.reset();
 
-    double flops = 0.0;
-    while (state.KeepRunning()) {
+    std::string statName = name_ + state.name_;
+    for (int i = 0; i < 20; i++) {
+      REGISTER_TIMER_INFO(statName, function_->ops(inArgs, outArgs));
       function_->calc(inArgs, outArgs);
-      flops += function_->ops(inArgs, outArgs);
     }
-    state.counters["gflops"] = benchmark::Counter(flops, benchmark::Counter::kIsRate);
+
+    globalStat.setName(statName);
+    globalStat.printAllStatus();
+    globalStat.reset();
   }
 
 protected:

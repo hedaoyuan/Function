@@ -38,7 +38,6 @@ public:
   }
 
   void calc(const BufferArgs& inputs, const BufferArgs& outputs) override {
-    REGISTER_TIMER_INFO("GemmConv", ops(inputs, outputs));
     CHECK_EQ(numInputs_, inputs.size());
     CHECK_EQ(numOutputs_, outputs.size());
     check(inputs, outputs);

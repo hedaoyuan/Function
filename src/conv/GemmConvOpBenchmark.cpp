@@ -26,9 +26,5 @@ CONVOLUTION_BENCHMARK_D(GemmConv-CPU);
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   paddle::initMain(argc, argv);
-  ::benchmark::Initialize(&argc, argv);
-  if (::benchmark::ReportUnrecognizedArguments(argc, argv)) return 1;
-  ::benchmark::RunSpecifiedBenchmarks();
-
-  return 0;
+  return RUN_ALL_TESTS();
 }

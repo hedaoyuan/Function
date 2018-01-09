@@ -17,7 +17,7 @@ limitations under the License. */
 
 namespace paddle {
 
-void BM_Convolution(benchmark::State& state,
+void BM_Convolution(State&& state,
                     const std::string& conv,
                     std::string algo = "auto") {
   size_t inputChannels = state.range(0);
@@ -45,8 +45,6 @@ void BM_Convolution(benchmark::State& state,
   test.addInputs(BufferArg(VALUE_TYPE_FLOAT, shape1));
   test.addOutputs(BufferArg(VALUE_TYPE_FLOAT, shape2));
   test.run(state);
-  globalStat.printAllStatus();
-  globalStat.reset();
 }
 
 /**
@@ -54,36 +52,35 @@ void BM_Convolution(benchmark::State& state,
  *  input_channels, output_channels, input_size, filter_size, stride, padding
  */
 #define CONVOLUTION_BENCHMARK_I(function, algo...)                      \
-  BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
-      ->Args({3, 32, 192, 3, 2, 1})                                     \
-      ->Args({3, 32, 224, 3, 2, 1})                                     \
-      ->Args({3, 32, 300, 3, 2, 1})                                     \
-      ->Args({3, 64, 108, 3, 2, 1})                                     \
-      ->Unit(benchmark::kMicrosecond);
+  TEST(conv, benchmark1) {                                              \
+    BM_Convolution(State({3, 32, 192, 3, 2, 1}), #function, #algo);     \
+    BM_Convolution(State({3, 32, 224, 3, 2, 1}), #function, #algo);     \
+    BM_Convolution(State({3, 32, 300, 3, 2, 1}), #function, #algo);     \
+    BM_Convolution(State({3, 64, 108, 3, 2, 1}), #function, #algo);     \
+  }
 
 #define CONVOLUTION_BENCHMARK_R(function, algo...)                      \
-  BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
-      ->Args({64, 64, 54, 3, 1, 1})                                     \
-      ->Args({64, 128, 54, 3, 1, 1})                                    \
-      ->Args({128, 128, 27, 3, 1, 1})                                   \
-      ->Args({128, 256, 27, 3, 1, 1})                                   \
-      ->Args({256, 256, 14, 3, 1, 1})                                   \
-      ->Args({256, 512, 14, 3, 1, 1})                                   \
-      ->Args({512, 512, 7, 3, 1, 1})                                    \
-      ->Unit(benchmark::kMicrosecond);
+  TEST(conv, benchmark2) {                                              \
+    BM_Convolution(State({64, 64, 54, 3, 1, 1}), #function, #algo);     \
+    BM_Convolution(State({64, 128, 54, 3, 1, 1}), #function, #algo);    \
+    BM_Convolution(State({128, 128, 27, 3, 1, 1}), #function, #algo);   \
+    BM_Convolution(State({128, 256, 27, 3, 1, 1}), #function, #algo);   \
+    BM_Convolution(State({256, 256, 14, 3, 1, 1}), #function, #algo);   \
+    BM_Convolution(State({256, 512, 14, 3, 1, 1}), #function, #algo);   \
+    BM_Convolution(State({512, 512, 7, 3, 1, 1}), #function, #algo);    \
+  }
 
 #define CONVOLUTION_BENCHMARK_P(function, algo...)                      \
-  BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
-      ->Args({64, 128, 54, 1, 1, 0})                                    \
-      ->Args({128, 256, 27, 1, 1, 0})                                   \
-      ->Args({256, 512, 14, 1, 1, 0})                                   \
-      ->Unit(benchmark::kMicrosecond);
+  TEST(conv, benchmark3) {                                              \
+    BM_Convolution(State({64, 128, 54, 1, 1, 0}), #function, #algo);    \
+    BM_Convolution(State({128, 256, 27, 1, 1, 0}), #function, #algo);   \
+    BM_Convolution(State({256, 512, 14, 1, 1, 0}), #function, #algo);   \
+  }
 
 #define CONVOLUTION_BENCHMARK_D(function, algo...)                      \
-  BENCHMARK_CAPTURE(BM_Convolution, function#algo, #function, #algo)    \
-      ->Args({3, 32, 1500, 7, 4, 3})                                    \
-      ->Args({16, 32, 375, 3, 1, 1})                                    \
-      ->Args({16, 32, 188, 3, 1, 1})                                    \
-      ->Unit(benchmark::kMicrosecond);
-
+  TEST(conv, benchmark4) {                                              \
+    BM_Convolution(State({3, 32, 1500, 7, 4, 3}), #function, #algo);    \
+    BM_Convolution(State({16, 32, 375, 3, 1, 1}), #function, #algo);    \
+    BM_Convolution(State({16, 32, 188, 3, 1, 1}), #function, #algo);    \
+  }
 }  // namespace paddle
