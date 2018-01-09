@@ -78,8 +78,10 @@ public:
   ~StatSet() {}
 
   void printAllStatus();
+  void setName(const std::string& name) { name_ = name; };
 
   StatPtr getStat(const std::string& name, pid_t tid = 0, double flops = 0) {
+    // TODO: Maybe statName = name is OK.
     std::string statName =
       name + "." + to_string(tid) + "." + to_string(flops);
     {
@@ -89,7 +91,7 @@ public:
         return it->second;
       }
     }
-    StatPtr stat = std::make_shared<Stat>(statName, tid, flops);
+    StatPtr stat = std::make_shared<Stat>(name, tid, flops);
     std::lock_guard<RWLock> guard(lock_);
     auto ret = statSet_.insert(std::make_pair(statName, stat));
     return ret.first->second;
@@ -104,7 +106,7 @@ public:
 
 private:
   std::unordered_map<std::string, StatPtr> statSet_;
-  const std::string name_;
+  std::string name_;
   RWLock lock_;
 };
 

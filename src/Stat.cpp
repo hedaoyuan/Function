@@ -46,15 +46,18 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
     average = info.total_ / info.count_;
     outPut << "Stat=" << std::setw(30) << stat.getName();
 
-    if (ops > 0) {
-      double gflops = ops / average / 1000;
-      outPut << " gflops=" << std::setw(10) << gflops;
-    }
     outPut << " total=" << std::setw(10) << info.total_ * 0.001
            << " avg=" << std::setw(10) << average * 0.001
            << " max=" << std::setw(10) << info.max_ * 0.001
            << " min=" << std::setw(10) << info.min_ * 0.001
-           << " count=" << std::setw(10) << info.count_ << std::endl;
+           << " count=" << std::setw(10) << info.count_;
+
+    if (ops > 0) {
+      double gflops = ops / average / 1000;
+      outPut << " gflops=" << std::setw(10) << gflops;
+    }
+
+    outPut << std::endl;
   }
 
   return outPut;
@@ -62,15 +65,15 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
 
 void StatSet::printAllStatus() {
   ReadLockGuard guard(lock_);
-  LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
+  std::cout << std::setiosflags(std::ios::left) << std::setfill(' ')
             << "======= StatSet: [" << name_ << "] status ======" << std::endl;
   for (auto& stat : statSet_) {
     if (stat.second->getStatInfo().count_ > 0) {
-      LOG(INFO) << std::setiosflags(std::ios::left) << std::setfill(' ')
+      std::cout << std::setiosflags(std::ios::left) << std::setfill(' ')
                 << *(stat.second);
     }
   }
-  LOG(INFO) << std::setiosflags(std::ios::left)
+  std::cout << std::setiosflags(std::ios::left)
             << "--------------------------------------------------"
             << std::endl;
 }
