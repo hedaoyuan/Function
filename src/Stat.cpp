@@ -54,6 +54,7 @@ std::ostream& operator<<(std::ostream& outPut, const Stat& stat) {
 
     if (ops > 0) {
       double gflops = ops / average / 1000;
+      outPut << std::setiosflags(std::ios::fixed) << std::setprecision(3);
       outPut << " gflops=" << std::setw(10) << gflops;
     }
 
