@@ -5,15 +5,15 @@ Mainly to test the performance of the [OpenBlas](https://github.com/xianyi/OpenB
 ### Convolution
 Compare convolution function performance based on various implementations, such as OpenBlas based GemmConv, NNPACK based NNPACKConv Functions.
 ```
-Stat=GemmConv-CPU/64/64/54/3/1/1    total=414.027    avg=20.701     max=20.956     min=20.563     count=20         gflops=10.3855
-Stat=GemmConv-CPU/64/128/54/3/1/1   total=787.517    avg=39.375     max=40.723     min=38.644     count=20         gflops=10.9202
-Stat=GemmConv-CPU/128/128/27/3/1/1  total=397.255    avg=19.862     max=20.455     min=19.692     count=20         gflops=10.8242
-Stat=GemmConv-CPU/128/256/27/3/1/1  total=791.64     avg=39.582     max=41.642     min=38.299     count=20         gflops=10.8631
-Stat=GemmConv-CPU/256/256/14/3/1/1  total=428.59     avg=21.429     max=22.277     min=20.497     count=20         gflops=10.7896
-Stat=GemmConv-CPU/256/512/14/3/1/1  total=834.855    avg=41.742     max=43.073     min=40.486     count=20         gflops=11.0781
-Stat=GemmConv-CPU/512/512/7/3/1/1   total=511.348    avg=25.567     max=25.877     min=24.856     count=20         gflops=9.04334
-Stat=GemmConv-CPU/16/32/375/3/1/1   total=2802.19    avg=140.109    max=140.252    min=139.925    count=20         gflops=9.24994
-Stat=GemmConv-CPU/16/32/188/3/1/1   total=680.885    avg=34.044     max=34.181     min=33.907     count=20         gflops=9.56792
+Stat=GemmConv-CPU/64/64/54/3/1/1    total=414.027  avg=20.701   max=20.956   min=20.563   count=20  gflops=10.386
+Stat=GemmConv-CPU/64/128/54/3/1/1   total=787.517  avg=39.375   max=40.723   min=38.644   count=20  gflops=10.92
+Stat=GemmConv-CPU/128/128/27/3/1/1  total=397.255  avg=19.862   max=20.455   min=19.692   count=20  gflops=10.824
+Stat=GemmConv-CPU/128/256/27/3/1/1  total=791.64   avg=39.582   max=41.642   min=38.299   count=20  gflops=10.863
+Stat=GemmConv-CPU/256/256/14/3/1/1  total=428.59   avg=21.429   max=22.277   min=20.497   count=20  gflops=10.79
+Stat=GemmConv-CPU/256/512/14/3/1/1  total=834.855  avg=41.742   max=43.073   min=40.486   count=20  gflops=11.078
+Stat=GemmConv-CPU/512/512/7/3/1/1   total=511.348  avg=25.567   max=25.877   min=24.856   count=20  gflops=9.043
+Stat=GemmConv-CPU/16/32/375/3/1/1   total=2802.19  avg=140.109  max=140.252  min=139.925  count=20  gflops=9.25
+Stat=GemmConv-CPU/16/32/188/3/1/1   total=680.885  avg=34.044   max=34.181   min=33.907   count=20  gflops=9.568
 ```
 ```
 ---------------------------------------------------------------------------------------------------------------------
