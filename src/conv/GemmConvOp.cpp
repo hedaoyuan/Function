@@ -12,13 +12,85 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
+#include <algorithm>
 #include "ConvOp.h"
 #include "GemmFunctor.h"
 #include "Im2Col.h"
-#include <cmath>
 #include "Stat.h"
 
 namespace paddle {
+
+/**
+ * Convolution calculation based on matrix multiplication.
+ *
+ * Convolution calculation based on matrix multiplication consists of two steps.
+ * 1. Unrolling the input data in convolution order into a two-dimensional
+ *    convolution matrix.
+ * 2. Convolution results are obtained by matrix multiplication based on
+ *    filter matrix and the convolution matrix.
+ * 
+ */
+template <class T, class Im2ColFunctor, class GemmFunctor>
+struct ConvUsingGemm {
+  static void compute(const PackingParameter& argument,
+                      const T* input,
+                      const T* filter,
+                      int filter_ld,
+                      T* output,
+                      int output_ld,
+                      T* packed_input,
+                      int input_channels,
+                      int output_channels,
+                      int block_channels,
+                      int block_output_height,
+                      T beta) {
+    const int input_offset = argument.input_height * argument.input_width;
+    const int filter_offset = argument.filter_height * argument.filter_width;
+    const int output_width = argument.output_width;
+    const int output_height = argument.output_height;
+
+    Im2ColFunctor im2col;
+    GemmFunctor gemm;
+    for (int ic = 0; ic < input_channels; ic += block_channels) {
+      int packed_channels = std::min(input_channels - ic, block_channels);
+      for (int oh = 0; oh < output_height; oh += block_output_height) {
+        int packed_output_height = std::min(output_height - oh, block_output_height);
+
+        int M = output_channels;
+        int N = packed_output_height * output_width;
+        int K = packed_channels * filter_offset;
+        {
+        REGISTER_TIMER_INFO("im2col");
+        im2col(argument,
+               input + ic * input_offset,
+               packed_input,
+               packed_channels,
+               oh,
+               packed_output_height,
+               N);
+        }
+        {
+        REGISTER_TIMER_INFO("gemm");
+        gemm(CblasNoTrans,
+             CblasNoTrans,
+             M,
+             N,
+             K,
+             1.0f,
+             filter + ic * filter_offset,
+             filter_ld,
+             packed_input,
+             N,
+             beta,
+             output + oh * output_width,
+             output_ld);
+        }
+      }
+      // The input beta can be 0.0;
+      beta = 1.0;
+    }
+  }
+};
 
 /*
  * \brief Forward calculation of convolution.
@@ -47,127 +119,102 @@ public:
     const TensorShape& filter = inputs[1].shape();
     const TensorShape& output = outputs[0].shape();
 
-    real beta;
+    float beta;
     if (outputs[0].getArgType() == ADD_TO) {
       beta = 1.0;
     } else {
       beta = 0.0;
     }
 
-    size_t batchSize = input[0];
-    size_t inputChannels = input[1];
-    size_t inputHeight = input[2];
-    size_t inputWidth = input[3];
-    size_t filterHeight = getFilterHeight(filter);
-    size_t filterWidth = getFilterWidth(filter);
-    size_t outputChannels = output[1];
-    size_t outputHeight = output[2];
-    size_t outputWidth = output[3];
+    size_t batch_size = input[0];
+    size_t input_channels = input[1];
+    size_t input_height = input[2];
+    size_t input_width = input[3];
+    size_t filter_height = getFilterHeight(filter);
+    size_t filter_width = getFilterWidth(filter);
+    size_t output_channels = output[1];
+    size_t output_height = output[2];
+    size_t output_width = output[3];
 
-    real* inputData = inputs[0].data<real>();
-    real* filterData = inputs[1].data<real>();
-    real* outputData = outputs[0].data<real>();
+    float* input_data = inputs[0].data<float>();
+    float* output_data = outputs[0].data<float>();
+    float* packed_input = NULL;
     bool needIm2col = isNeedIm2col(filter);
 
-    TensorShape imShape =
-        TensorShape({inputChannels / groups_, inputHeight, inputWidth});
+    // size_t block_output_height = 
+    //    std::min(outputWidth > 2048 ? 1 : 2048 / outputWidth, outputHeight);
+    // Max col matrix width 2048, Max col matrix size 2M.
+    size_t block_output_height =
+      std::min(std::max(2048 / output_width, (size_t)1), output_height);
+    size_t maxColWidth = block_output_height * output_width;
+    size_t block_channels =
+      std::min(std::max((524288 / maxColWidth) / filter_height * filter_width, (size_t)1),
+               input_channels / groups_);
+    size_t maxColHeight = block_channels * filter_height * filter_width;
 
-    TensorShape colShape;
-    real* colData = NULL;
-
-    size_t colHeight = inputChannels / groups_ * filterHeight * filterWidth;
-    size_t colWidth = outputHeight * outputWidth;
-    // Max col matrix height 256, Max col matrix width 1024
-    size_t stepColHeight = std::min(colHeight, (size_t)256);
-    size_t stepColWidth = std::min(colWidth, (size_t)1024);
-
+    PackingParameter packing_argument;
     if (needIm2col) {
-      colShape = TensorShape({inputChannels / groups_,
-                              filterHeight,
-                              filterWidth,
-                              outputHeight,
-                              outputWidth});
-
-      resizeBuffer<Device>(stepColHeight * stepColWidth * sizeof(real));
-      colData = reinterpret_cast<real*>(memory_->getBuf());
+      packing_argument.input_height = input_height;
+      packing_argument.input_width = input_width;
+      packing_argument.filter_height = filter_height;
+      packing_argument.filter_width = filter_width;
+      packing_argument.output_height = output_height;
+      packing_argument.output_width = output_width;
+      packing_argument.stride_height = strideH();
+      packing_argument.stride_width = strideW();
+      packing_argument.padding_height = paddingH();
+      packing_argument.padding_width = paddingW();
+      resizeBuffer<Device>(maxColHeight * maxColWidth * sizeof(float));
+      packed_input = reinterpret_cast<float*>(memory_->getBuf());
     }
 
-    Im2ColFunctor<kCFO, Device, real> im2col;
-    GemmFunctor<Device, real> gemm;
-    size_t inputOffset = imShape.getElements();
-    size_t outputOffset =
-        (outputChannels / groups_) * outputHeight * outputWidth;
-    size_t filterOffset = filter.getElements() / groups_;
+    GemmFunctor<Device, float> gemm;
+    size_t input_offset = (input_channels / groups_) * input_height * input_width;
+    size_t output_offset =
+        (output_channels / groups_) * output_height * output_width;
+    size_t filter_offset = filter.getElements() / groups_;
 
-    int nStride = colWidth;
-    int kStride = colHeight;
-    for (size_t i = 0; i < batchSize; i++) {
+    for (size_t i = 0; i < batch_size; i++) {
+      float* filter_data = inputs[1].data<float>();
       for (size_t g = 0; g < groups_; g++) {
         if (needIm2col) {
-          real beta_ = beta;
-          for (size_t colHeightStart = 0; colHeightStart < colHeight; colHeightStart += stepColHeight) {
-            for (size_t colWidthStart = 0; colWidthStart < colWidth; colWidthStart += stepColWidth) {
-              int N = std::min(colWidth - colWidthStart, stepColWidth);
-              int K = std::min(colHeight - colHeightStart, stepColHeight);
-              // im2col
-              {
-              REGISTER_TIMER_INFO("im2col");
-              im2col(inputData + g * inputOffset,
-                     imShape,
-                     colData,
-                     colShape,
-                     strideH(),
-                     strideW(),
-                     paddingH(),
-                     paddingW(),
-                     colHeightStart,
-                     K,
-                     colWidthStart,
-                     N);
-              }
-
-              // gemm
-              {
-              REGISTER_TIMER_INFO("gemm");
-              int M = outputChannels / groups_;
-              gemm(CblasNoTrans,
-                   CblasNoTrans,
-                   M,
-                   N,
-                   K,
-                   1.0f,
-                   filterData + g * filterOffset + colHeightStart,
-                   kStride,
-                   colData,
-                   N,
-                   beta_,
-                   outputData + g * outputOffset + colWidthStart,
-                   nStride);
-              }
-            }
-            beta_ = 1.0;
-          }
+          ConvUsingGemm<float,
+                        Im2ColFunctor<kCFO, Device, float>,
+                        GemmFunctor<Device, float>>::compute(
+                          packing_argument,
+                          input_data,
+                          filter_data,
+                          input_channels / groups_ * filter_height * filter_width,
+                          output_data,
+                          output_height * output_width,
+                          packed_input,
+                          input_channels / groups_,
+                          output_channels / groups_,
+                          block_channels,
+                          block_output_height,
+                          beta);
         } else {
-          int M = outputChannels / groups_;
-          int N = outputHeight * outputWidth;
-          int K = inputChannels / groups_ * filterHeight * filterWidth;
+          int M = output_channels / groups_;
+          int N = output_height * output_width;
+          int K = input_channels / groups_ * filter_height * filter_width;
           gemm(CblasNoTrans,
                CblasNoTrans,
                M,
                N,
                K,
                1.0f,
-               filterData + g * filterOffset,
+               filter_data,
                K,
-               inputData + g * inputOffset,
+               input_data,
                N,
                beta,
-               outputData + g * outputOffset,
+               output_data,
                N);
         }
+        input_data += input_offset;
+        output_data += output_offset;
+        filter_data += filter_offset;
       }
-      inputData += inputChannels * inputHeight * inputWidth;
-      outputData += outputChannels * outputHeight * outputWidth;
     }
   }
 };

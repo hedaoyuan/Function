@@ -67,21 +67,30 @@ enum ColFormat { kCFO = 0, kOCF = 1 };
  * \note The caller needs to ensure that imShape.inputChannels is equal to
  *       colShape.inputChannels.
  */
+
+struct PackingParameter{
+  int input_height;
+  int input_width;
+  int filter_height;
+  int filter_width;
+  int output_height;
+  int output_width;
+  int stride_height;
+  int stride_width;
+  int padding_height;
+  int padding_width;
+};
+
 template <ColFormat Format, DeviceType Device, class T>
 class Im2ColFunctor {
 public:
-  void operator()(const T* imData,
-                  const TensorShape& imShape,
-                  T* colData,
-                  const TensorShape& colShape,
-                  int strideHeight,
-                  int strideWidth,
-                  int paddingHeight,
-                  int paddingWidth,
-                  int colHeightStart,
-                  int colHeightSize,
-                  int colWidthStart,
-                  int colWidthSize);
+  void operator()(const PackingParameter& argument,
+                  const T* input,
+                  T* packed_input,
+                  int packed_channels,
+                  int packed_output_start,
+                  int packed_output_height,
+                  int packed_width);
 };
 
 template <ColFormat Format, DeviceType Device, class T>
