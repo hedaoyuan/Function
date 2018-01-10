@@ -5,23 +5,15 @@ Mainly to test the performance of the [OpenBlas](https://github.com/xianyi/OpenB
 ### Convolution
 Compare convolution function performance based on various implementations, such as OpenBlas based GemmConv, NNPACK based NNPACKConv Functions.
 ```
-----------------------------------------------------------------------------------------------------
-Benchmark                                             Time           CPU Iterations UserCounters...
-----------------------------------------------------------------------------------------------------
-BM_Convolution/GemmConv-CPU/3/64/108/3/1/1         6755 us       6662 us        102 gflops=5.63496G/s
-BM_Convolution/GemmConv-CPU/64/64/54/3/1/1        24752 us      24445 us         28 gflops=8.19091G/s
-BM_Convolution/GemmConv-CPU/64/128/54/3/1/1       43815 us      43238 us         16 gflops=9.26158G/s
-BM_Convolution/GemmConv-CPU/128/128/27/3/1/1      23365 us      22961 us         30 gflops=8.72014G/s
-BM_Convolution/GemmConv-CPU/64/128/54/1/1/0        6437 us       6302 us        125 gflops=7.06061G/s
-BM_Convolution/GemmConv-CPU/128/128/27/3/1/1      23494 us      23096 us         30 gflops=8.66927G/s
-BM_Convolution/GemmConv-CPU/128/256/27/3/1/1      42800 us      42086 us         17 gflops=9.51517G/s
-BM_Convolution/GemmConv-CPU/256/256/14/3/1/1      22863 us      22459 us         32 gflops=9.58772G/s
-BM_Convolution/GemmConv-CPU/128/256/27/1/1/0       5766 us       5634 us        121 gflops=7.8982G/s
-BM_Convolution/GemmConv-CPU/256/256/14/3/1/1      22714 us      22333 us         31 gflops=9.64186G/s
-BM_Convolution/GemmConv-CPU/256/512/14/3/1/1      44780 us      44008 us         16 gflops=9.78604G/s
-BM_Convolution/GemmConv-CPU/512/512/7/3/1/1       26900 us      26407 us         27 gflops=8.1543G/s
-BM_Convolution/GemmConv-CPU/256/512/14/1/1/0       5406 us       5303 us        134 gflops=9.02427G/s
-BM_Convolution/GemmConv-CPU/512/512/7/3/1/1       26803 us      26287 us         27 gflops=8.19143G/s
+Stat=GemmConv-CPU/64/64/54/3/1/1    total=414.027    avg=20.701     max=20.956     min=20.563     count=20         gflops=10.3855
+Stat=GemmConv-CPU/64/128/54/3/1/1   total=787.517    avg=39.375     max=40.723     min=38.644     count=20         gflops=10.9202
+Stat=GemmConv-CPU/128/128/27/3/1/1  total=397.255    avg=19.862     max=20.455     min=19.692     count=20         gflops=10.8242
+Stat=GemmConv-CPU/128/256/27/3/1/1  total=791.64     avg=39.582     max=41.642     min=38.299     count=20         gflops=10.8631
+Stat=GemmConv-CPU/256/256/14/3/1/1  total=428.59     avg=21.429     max=22.277     min=20.497     count=20         gflops=10.7896
+Stat=GemmConv-CPU/256/512/14/3/1/1  total=834.855    avg=41.742     max=43.073     min=40.486     count=20         gflops=11.0781
+Stat=GemmConv-CPU/512/512/7/3/1/1   total=511.348    avg=25.567     max=25.877     min=24.856     count=20         gflops=9.04334
+Stat=GemmConv-CPU/16/32/375/3/1/1   total=2802.19    avg=140.109    max=140.252    min=139.925    count=20         gflops=9.24994
+Stat=GemmConv-CPU/16/32/188/3/1/1   total=680.885    avg=34.044     max=34.181     min=33.907     count=20         gflops=9.56792
 ```
 ```
 ---------------------------------------------------------------------------------------------------------------------
